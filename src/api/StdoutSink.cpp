@@ -6,4 +6,4 @@
 
 namespace qslog {
 
-}// namespace qs
+}// namespace qslog

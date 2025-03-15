@@ -37,7 +37,7 @@ public:
             return;
         }
 
-        for (auto &sink : sinks_) {
+        for (auto &sink: sinks_) {
             sink->log(entry);
         }
     }

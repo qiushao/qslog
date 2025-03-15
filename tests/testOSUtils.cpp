@@ -1,5 +1,5 @@
-#include <gtest/gtest.h>
 #include "../src/OSUtils.h"
+#include <gtest/gtest.h>
 #include <thread>
 
 TEST(OSUtilsTest, GetPid) {

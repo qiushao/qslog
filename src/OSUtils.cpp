@@ -1,6 +1,6 @@
 #include "OSUtils.h"
-#include <unistd.h>
 #include <pthread.h>
+#include <unistd.h>
 
 namespace qslog {
 

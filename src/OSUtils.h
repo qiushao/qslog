@@ -7,7 +7,7 @@ namespace qslog {
 class OSUtils {
 public:
     static size_t getPid();
-    
+
     static size_t getTid();
 };
 

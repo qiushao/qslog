@@ -1,9 +1,9 @@
-#include <fmt/format.h>
-#include <fmt/chrono.h>
-#include <iomanip>
-#include <sstream>
 #include "qslog/FileSink.h"
 #include "OSUtils.h"
+#include <fmt/chrono.h>
+#include <fmt/format.h>
+#include <iomanip>
+#include <sstream>
 
 namespace qslog {
 
@@ -27,11 +27,11 @@ void FileSink::log(const LogEntry &entry) {
 
     // 写入日志条目
     outFile_ << OSUtils::getPid() << " "
-            << OSUtils::getTid() << " "
-            << time << " "
-            << getLevelName(entry.level) << " "
-            << entry.tag << " "
-            << entry.msg << std::endl;
+             << OSUtils::getTid() << " "
+             << time << " "
+             << getLevelName(entry.level) << " "
+             << entry.tag << " "
+             << entry.msg << std::endl;
 }
 
 void FileSink::openFile(bool truncate) {

@@ -1,10 +1,10 @@
 #ifndef QSLOG_COMMON_H
 #define QSLOG_COMMON_H
 
+#include <array>
 #include <chrono>
 #include <functional>
 #include <string>
-#include <array>
 
 namespace qslog {
 
@@ -20,5 +20,5 @@ enum LogLevel {
 
 std::string_view getLevelName(LogLevel level);
 
-} // namespace qslog
+}// namespace qslog
 #endif//QSLOG_COMMON_H

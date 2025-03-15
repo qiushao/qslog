@@ -21,18 +21,15 @@ message("CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 add_subdirectory(third_party)
 add_subdirectory(src)
 
-if (QSLOG_BUILD_TESTS)
+if(QSLOG_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
 
-if (QSLOG_BUILD_BENCHMARKS)
+if(QSLOG_BUILD_BENCHMARKS)
     add_subdirectory(benchmarks)
-endif ()
+endif()
 
-if (QSLOG_BUILD_EXAMPLES)
+if(QSLOG_BUILD_EXAMPLES)
     add_subdirectory(examples)
-endif ()
-
-
-
+endif()

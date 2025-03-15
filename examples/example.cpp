@@ -8,7 +8,7 @@ int main() {
     qslog::Logger::addSink(consoleSink);
     qslog::Logger::addSink(fileSink);
     for (int i = 0; i < 10; ++i) {
-        qslog::Logger::log(qslog::INFO, "qiushao", "Hello qslog, count {}",  i);
+        qslog::Logger::log(qslog::INFO, "qiushao", "Hello qslog, count {}", i);
     }
     return 0;
 }
