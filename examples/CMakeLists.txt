@@ -1,0 +1,5 @@
+clear_local_var()
+set(local_module example)
+set(local_source example.cpp)
+set(local_dependency libqslog)
+build_executable()

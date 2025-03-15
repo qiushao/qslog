@@ -1,0 +1,6 @@
+clear_local_var()
+set(local_module testsuite)
+set(local_source testOSUtils.cpp)
+set(local_dependency libqslog gtest gtest_main)
+build_executable()
+add_test(NAME testsuite COMMAND testsuite)

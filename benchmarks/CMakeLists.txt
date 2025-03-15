@@ -1,0 +1,5 @@
+clear_local_var()
+set(local_module qslogBenchmark)
+set(local_source qslogBenchmark.cpp)
+set(local_dependency libqslog benchmark::benchmark)
+build_executable()
