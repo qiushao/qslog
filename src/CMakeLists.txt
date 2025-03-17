@@ -5,8 +5,10 @@ set(local_source
     api/BaseSink.cpp
     api/StdoutSink.cpp
     api/FileSink.cpp
+    api/MmapSink.cpp
     api/LogEntry.cpp
     api/common.cpp
+    FileUtils.cpp
     OSUtils.cpp)
 set(local_export_header api/include)
 set(local_dependency fmt::fmt)
