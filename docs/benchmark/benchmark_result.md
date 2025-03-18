@@ -14,19 +14,19 @@ echo schedutil | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
 
 # result
 ```shell
-2025-03-15T14:00:02+08:00
+2025-03-19T00:00:18+08:00
 Running /home/jingle/projects/clion/qslog/cmake-build-release/benchmarks/qslogBenchmark
-Run on (24 X 3930.47 MHz CPU s)
+Run on (24 X 4276.52 MHz CPU s)
 CPU Caches:
   L1 Data 32 KiB (x12)
   L1 Instruction 32 KiB (x12)
   L2 Unified 512 KiB (x12)
   L3 Unified 16384 KiB (x4)
-Load Average: 0.62, 0.59, 0.45
+Load Average: 0.15, 0.60, 0.68
 -----------------------------------------------------
 Benchmark           Time             CPU   Iterations
 -----------------------------------------------------
-bmFileSink      13988 ns        13988 ns        58829
+bmFileSink       2179 ns         2178 ns       372675
 
 Process finished with exit code 0
 ```

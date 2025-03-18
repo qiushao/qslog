@@ -1,15 +1,16 @@
 #include "OSUtils.h"
+#include <cstdint>
 #include <pthread.h>
 #include <unistd.h>
 
 namespace qslog {
 
-size_t OSUtils::getPid() {
-    static size_t cachedPid = getpid();
+int32_t OSUtils::getPid() {
+    static int32_t cachedPid = getpid();
     return cachedPid;
 }
 
-static size_t _getTid() {
+static int32_t _getTid() {
 #if defined(__APPLE__) || defined(__IOS__)
     uint64_t tid;
     pthread_threadid_np(NULL, &tid);
@@ -21,8 +22,8 @@ static size_t _getTid() {
 #endif
 }
 
-size_t OSUtils::getTid() {
-    static thread_local size_t cachedTid = _getTid();
+int32_t OSUtils::getTid() {
+    static thread_local int32_t cachedTid = _getTid();
     return cachedTid;
 }
 

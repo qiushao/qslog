@@ -7,7 +7,7 @@ namespace qslog {
 
 struct LogEntry {
     std::chrono::system_clock::time_point time;
-    size_t tid;
+    int32_t tid;
     LogLevel level;
     std::string_view tag;
     std::string_view msg;

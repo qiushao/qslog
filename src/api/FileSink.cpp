@@ -23,15 +23,13 @@ void FileSink::log(const LogEntry &entry) {
         return;
     }
 
-    std::string time = fmt::format("{:%Y-%m-%d %H:%M:%S}", entry.time);
+    static int32_t pid = OSUtils::getPid();
+    auto levelName = getLevelName(entry.level);
+    fmt::memory_buffer buf;
+    fmt::vformat_to(fmt::appender(buf), "{:%Y-%m-%d %H:%M:%S} {} {} {} {}: {}\n",
+                    fmt::make_format_args(entry.time, pid, entry.tid, levelName, entry.tag, entry.msg));
 
-    // 写入日志条目
-    outFile_ << OSUtils::getPid() << " "
-             << OSUtils::getTid() << " "
-             << time << " "
-             << getLevelName(entry.level) << " "
-             << entry.tag << " "
-             << entry.msg << std::endl;
+    outFile_.write(buf.data(), buf.size());
 }
 
 void FileSink::openFile(bool truncate) {

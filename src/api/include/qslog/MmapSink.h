@@ -19,11 +19,13 @@ private:
 
 private:
     static constexpr int kHeaderSize_ = 128;
-    static constexpr int kChunkSize_ = 512 * 1024;
+    static constexpr int kChunkSize_ = 256 * 1024;
+    int pageSize_ = 0;
     std::string_view fileName_;
     bool truncate_;
     size_t fileSize_ = 0;
     size_t actualUsedSize_ = 0;
+    uint8_t *headerPtr_ = nullptr;
     uint8_t *dataPtr_ = nullptr;
     size_t curPos_ = 0;
 };

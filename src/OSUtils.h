@@ -1,14 +1,15 @@
 #ifndef QSLOG_OSUTILS_H
 #define QSLOG_OSUTILS_H
 
+#include <cstdint>
 #include <cstdio>
 namespace qslog {
 
 class OSUtils {
 public:
-    static size_t getPid();
+    static int32_t getPid();
 
-    static size_t getTid();
+    static int32_t getTid();
 };
 
 }// namespace qslog
