@@ -25,12 +25,15 @@ void FileSink::log(const LogEntry &entry) {
 
     static int32_t pid = OSUtils::getPid();
     auto levelName = getLevelName(entry.level);
-    fmt::vformat_to(fmt::appender(buf_), "{:%Y-%m-%d %H:%M:%S} {} {} {} {}: {}\n",
-                    fmt::make_format_args(entry.time, pid, entry.tid, levelName, entry.tag, entry.msg));
+    auto args = fmt::make_format_args(entry.time, pid, entry.tid, levelName, entry.tag, entry.msg);
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        fmt::vformat_to(fmt::appender(buf_), "{:%Y-%m-%d %H:%M:%S} {} {} {} {}: {}\n", args);
 
-    if (buf_.size() > kBufferSize) {
-        outFile_.write(buf_.data(), buf_.size());
-        buf_.resize(0);
+        if (buf_.size() > kBufferSize) {
+            outFile_.write(buf_.data(), buf_.size());
+            buf_.resize(0);
+        }
     }
 }
 

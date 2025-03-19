@@ -4,6 +4,7 @@
 #include "fmt/format.h"
 #include "qslog/BaseSink.h"
 #include <fstream>
+#include <mutex>
 #include <string_view>
 
 namespace qslog {
@@ -15,11 +16,12 @@ public:
     void log(const LogEntry &entry) override;
 
 private:
-    static constexpr int kBufferSize = 256 * 1024;
+    static constexpr int kBufferSize = 512 * 1024;
     void openFile(bool truncate);
     std::ofstream outFile_;
     std::string fileName_;
     fmt::memory_buffer buf_;
+    std::mutex mutex_;
 };
 
 }// namespace qslog
