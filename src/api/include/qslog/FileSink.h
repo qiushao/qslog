@@ -1,6 +1,7 @@
 #ifndef QSLOG_FILESINK_H
 #define QSLOG_FILESINK_H
 
+#include "fmt/format.h"
 #include "qslog/BaseSink.h"
 #include <fstream>
 #include <string_view>
@@ -14,9 +15,11 @@ public:
     void log(const LogEntry &entry) override;
 
 private:
+    static constexpr int kBufferSize = 256 * 1024;
     void openFile(bool truncate);
     std::ofstream outFile_;
     std::string fileName_;
+    fmt::memory_buffer buf_;
 };
 
 }// namespace qslog
