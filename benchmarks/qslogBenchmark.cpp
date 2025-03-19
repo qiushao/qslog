@@ -14,29 +14,33 @@ static void bmStdoutSink(benchmark::State &state) {
 }
 //BENCHMARK(bmStdoutSink);
 
-static void bmFileSink(benchmark::State &state) {
-    auto fileSink = std::make_shared<qslog::FileSink>("file", "fileSinkBench.log", true);
+std::shared_ptr<qslog::FileSink> fileSink = nullptr;
+static int initFileSink() {
+    fileSink = std::make_shared<qslog::FileSink>("file", "fileSinkBench.log", true);
     qslog::Logger::addSink(fileSink);
-    uint64_t count = 0;
+    return 0;
+}
+static void bmFileSink(benchmark::State &state) {
+    static uint64_t count = initFileSink();
     for (auto _: state) {
         qslog::Logger::log(qslog::LogLevel::DEBUG, "tag", "hello world it count {}", ++count);
     }
 }
 BENCHMARK(bmFileSink);
 
-std::shared_ptr<qslog::MmapSink> sink = nullptr;
-static int init() {
-    sink = std::make_shared<qslog::MmapSink>("mmap", "mmapSinkBench.log", true);
-    qslog::Logger::addSink(sink);
+std::shared_ptr<qslog::MmapSink> mmapSink = nullptr;
+static int initMmapSink() {
+    mmapSink = std::make_shared<qslog::MmapSink>("mmap", "mmapSinkBench.log", true);
+    qslog::Logger::addSink(mmapSink);
     return 0;
 }
 static void bmMmapSink(benchmark::State &state) {
     printf("bmMmapSink\n");
-    static uint64_t count = init();
+    static uint64_t count = initMmapSink();
     for (auto _: state) {
         qslog::Logger::log(qslog::LogLevel::DEBUG, "tag", "hello world it count {}\n", ++count);
     }
 }
-BENCHMARK(bmMmapSink);
+//BENCHMARK(bmMmapSink);
 
 BENCHMARK_MAIN();
