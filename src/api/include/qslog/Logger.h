@@ -23,7 +23,7 @@ public:
     static void addSink(std::shared_ptr<BaseSink> sink);
 
     template<typename... Args>
-    static void log(LogLevel level, std::string_view tag, std::string_view format, Args &&...args) {
+    static void log(std::string_view file, uint32_t line, LogLevel level, std::string_view tag, fmt::format_string<Args...> format, Args &&...args) {
         if (level < logLevel_) {
             return;
         }
@@ -48,6 +48,15 @@ private:
     static std::vector<std::shared_ptr<BaseSink>> sinks_;
 };
 
+#define QSLOG(level, tag, format, ...) \
+    qslog::Logger::log(__FILE__, __LINE__, level, tag, FMT_STRING(format), ##__VA_ARGS__)
+
+#define QSLOGV(format, ...) (QSLOG(qslog::LogLevel::VERBOSE, QSLOG_TAG, format, ##__VA_ARGS__))
+#define QSLOGD(format, ...) (QSLOG(qslog::LogLevel::DEBUG, QSLOG_TAG, format, ##__VA_ARGS__))
+#define QSLOGI(format, ...) (QSLOG(qslog::LogLevel::INFO, QSLOG_TAG, format, ##__VA_ARGS__))
+#define QSLOGW(format, ...) (QSLOG(qslog::LogLevel::WARN, QSLOG_TAG, format, ##__VA_ARGS__))
+#define QSLOGE(format, ...) (QSLOG(qslog::LogLevel::ERROR, QSLOG_TAG, format, ##__VA_ARGS__))
+#define QSLOGF(format, ...) (QSLOG(qslog::LogLevel::FATAL, QSLOG_TAG, format, ##__VA_ARGS__))
 }// namespace qslog
 
 #endif//QSLOG_LOGGER_H
