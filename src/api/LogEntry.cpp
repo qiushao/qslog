@@ -8,7 +8,7 @@ namespace qslog {
 LogEntry::LogEntry(std::string_view sourceLocation, LogLevel level, std::string_view tag, std::string_view format, std::vector<uint8_t> args)
     : tid_(OSUtils::getTid()),
       pid_(OSUtils::getPid()),
-      time_(0),
+      time_(OSUtils::realTimeMillisecond()),
       sourceLocation_(sourceLocation),
       level_(level),
       tag_(tag),

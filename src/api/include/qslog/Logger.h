@@ -119,6 +119,17 @@ static void serializeArg(std::vector<uint8_t> &buffer, T &&arg) {
                           reinterpret_cast<const uint8_t *>(arg) + length);
         }
     }
+    // 字符数组（字符串字面量 "hello"）
+    else if constexpr (std::is_array_v<CleanType> &&
+                       std::is_same_v<std::remove_const_t<std::remove_extent_t<CleanType>>, char>) {
+        typeId = 12;
+        buffer.push_back(typeId);
+        uint32_t length = std::strlen(arg);
+        buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(&length),
+                      reinterpret_cast<const uint8_t *>(&length) + sizeof(length));
+        buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(arg),
+                      reinterpret_cast<const uint8_t *>(arg) + length);
+    }
     // 字符类型
     else if constexpr (std::is_same_v<CleanType, char>) {
         typeId = 13;

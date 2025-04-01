@@ -85,6 +85,16 @@ static void serializeArg(std::ofstream &file, T &&arg) {
             file.write(arg, length);
         }
     }
+    // 字符数组（字符串字面量 "hello"）
+    else if constexpr (std::is_array_v<CleanType> &&
+                       std::is_same_v<std::remove_const_t<std::remove_extent_t<CleanType>>, char>) {
+        typeId = 12;
+        file.write(reinterpret_cast<const char *>(&typeId), sizeof(typeId));
+        const char *str = arg;// 隐式转换为指针
+        uint32_t length = std::strlen(str);
+        file.write(reinterpret_cast<const char *>(&length), sizeof(length));
+        file.write(str, length);
+    }
     // 字符类型
     else if constexpr (std::is_same_v<CleanType, char>) {
         typeId = 13;
@@ -164,6 +174,7 @@ static void log(std::string_view file, uint32_t line, int level, std::string_vie
 
 int main() {
     std::string str = "just for today";
+    const char *cstr = "c style str";
     std::mutex mutex;
     int *ptr;
     for (int i = 0; i < 10000; ++i) {
@@ -171,7 +182,7 @@ int main() {
     }
 
     for (int i = 0; i < 10000; ++i) {
-        log(__FILE__, __LINE__, 4, "qiushao", "bin log test {} {}", i, 1.4 * i);
+        log(__FILE__, __LINE__, 4, "qiushao", "bin log test {} {} {} {}", i, 1.4, cstr, "hello");
     }
     return 0;
 }

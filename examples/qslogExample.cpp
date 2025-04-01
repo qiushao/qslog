@@ -11,7 +11,7 @@ int main() {
     qslog::Logger::addSink(consoleSink);
     qslog::Logger::addSink(fileSink);
     for (int i = 0; i < 10; ++i) {
-        QSLOGD("hello qslog {}", i);
+        QSLOGD("hello qslog {} {}", i, "c style str");
     }
     qslog::Logger::sync();
     return 0;
