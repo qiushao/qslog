@@ -56,7 +56,9 @@ void CompressFileSink::write(const void *data, uint32_t size) {
 uint32_t CompressFileSink::getFormatId(const std::string& format) {
     uint32_t formatId = 0;
     auto it = formatIdMap_.find(format);
-    if (it == formatIdMap_.end()) {
+    if (it != formatIdMap_.end()) {
+        formatId = it->second;
+    } else {
         formatId = formatIdMap_.size();
         formatIdMap_[format] = formatId;
     }
