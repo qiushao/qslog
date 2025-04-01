@@ -1,5 +1,10 @@
 clear_local_var()
 set(local_module example)
-set(local_source example.cpp)
+set(local_source qslogExample.cpp)
 set(local_dependency libqslog)
+build_executable()
+
+clear_local_var()
+set(local_module serializeExample)
+set(local_source serializeExample.cpp)
 build_executable()
