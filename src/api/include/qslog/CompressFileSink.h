@@ -18,7 +18,7 @@ public:
 
 private:
     void write(const void *data, uint32_t size);
-    uint32_t getFormatId(const std::string& format);
+    uint32_t getFormatId(const std::string &format);
     void doSync();
 
     static constexpr int kBufferSize = 512 * 1024;
