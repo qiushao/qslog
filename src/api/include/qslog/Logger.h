@@ -30,7 +30,7 @@ public:
 
         fmt::memory_buffer buf;
         fmt::vformat_to(fmt::appender(buf), format, fmt::make_format_args(args...));
-        LogEntry entry(level, tag, std::string_view(buf.data(), buf.size()));
+        LogEntry entry(file, line, level, tag, std::string_view(buf.data(), buf.size()));
 
         if (logHandler_) {
             logHandler_(entry);

@@ -11,7 +11,7 @@ public:
     explicit StdoutSink(std::string_view name) : BaseSink(name) {}
 
     void log(const LogEntry &entry) override {
-        std::cout << entry.msg << std::endl;
+        std::cout << entry.msg_ << std::endl;
     }
 };
 
