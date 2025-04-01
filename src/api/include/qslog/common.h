@@ -19,7 +19,6 @@ enum LogLevel {
 };
 
 std::string_view getLevelName(LogLevel level);
-std::string_view extractFilename(std::string_view path);
 
 }// namespace qslog
 #endif//QSLOG_COMMON_H

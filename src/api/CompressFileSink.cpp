@@ -27,8 +27,7 @@ void CompressFileSink::log(const LogEntry &entry) {
         write(&entry.time_, sizeof(entry.time_));
         write(&entry.pid_, sizeof(entry.pid_));
         write(&entry.tid_, sizeof(entry.tid_));
-        write(&entry.line_, sizeof(entry.line_));
-        write(entry.file_.data(), entry.file_.length());
+        write(entry.sourceLocation_.data(), entry.sourceLocation_.length());
         write(entry.tag_.data(), entry.tag_.length());
         write(&formatId, sizeof(formatId));
         write(entry.argStore_.data(), entry.argStore_.size());

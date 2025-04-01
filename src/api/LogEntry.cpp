@@ -5,12 +5,11 @@
 #include <utility>
 
 namespace qslog {
-LogEntry::LogEntry(std::string_view file, uint16_t line, LogLevel level, std::string_view tag, std::string_view format, std::vector<uint8_t> args)
+LogEntry::LogEntry(std::string_view sourceLocation, LogLevel level, std::string_view tag, std::string_view format, std::vector<uint8_t> args)
     : tid_(OSUtils::getTid()),
       pid_(OSUtils::getPid()),
       time_(0),
-      file_(file),
-      line_(line),
+      sourceLocation_(sourceLocation),
       level_(level),
       tag_(tag),
       format_(format),
@@ -22,8 +21,8 @@ std::string LogEntry::formatLogEntry() const {
     std::string msg = parserMsg();
     fmt::memory_buffer buf;
     auto levelName = getLevelName(level_);
-    auto formatArgs = fmt::make_format_args(time_, pid_, tid_, levelName, tag_, file_, line_, msg);
-    fmt::vformat_to(fmt::appender(buf), "{} {} {} {} {} {}:{} {}", formatArgs);
+    auto formatArgs = fmt::make_format_args(time_, pid_, tid_, levelName, tag_, sourceLocation_, msg);
+    fmt::vformat_to(fmt::appender(buf), "{} {} {} {} {} {} {}", formatArgs);
     return {buf.data(), buf.size()};
 }
 

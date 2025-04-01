@@ -9,6 +9,21 @@
 
 namespace qslog {
 
+#define QSLOG_LINE(x) #x
+#define QSLOG_LINE_S(x) QSLOG_LINE(x)
+#define QSLOG_SOURCE_LOCATION __FILE__ ":" QSLOG_LINE_S(__LINE__)
+
+// Compile-time string literal parsing to extract filename
+// This is a constexpr function that can be evaluated at compile time
+constexpr std::string_view extractFilename(std::string_view path) {
+    size_t pos = path.find_last_of("/\\");
+    if (pos == std::string_view::npos) {
+        return path; // No path separator, return the entire string
+    }
+    return path.substr(pos + 1);
+}
+
+#define QSLOG_BASE_SOURCE_LOCATION (::qslog::extractFilename(QSLOG_SOURCE_LOCATION))
 
 typedef std::function<void(const LogEntry &entry)> LogHandler;
 
@@ -143,18 +158,15 @@ public:
     static void sync();
 
     template<typename... Args>
-    static void log(std::string_view file, uint32_t line, LogLevel level, std::string_view tag, fmt::format_string<Args...> format, Args &&...args) {
+    static void log(std::string_view sourceLocation, LogLevel level, std::string_view tag, fmt::format_string<Args...> format, Args &&...args) {
         if (level < logLevel_) {
             return;
         }
 
-        fmt::memory_buffer buf;
-        fmt::vformat_to(fmt::appender(buf), format, fmt::make_format_args(args...));
-
         std::vector<uint8_t> argStore;
         // 使用折叠表达式序列化参数
         (serializeArg(argStore, std::forward<Args>(args)), ...);
-        LogEntry entry(extractFilename(file), line, level, tag, format.str.data(), argStore);
+        LogEntry entry(sourceLocation, level, tag, format.str.data(), argStore);
 
         if (logHandler_) {
             logHandler_(entry);
@@ -172,7 +184,7 @@ public:
 };
 
 #define QSLOG(level, tag, format, ...) \
-    qslog::Logger::log(__FILE__, __LINE__, level, tag, FMT_STRING(format), ##__VA_ARGS__)
+    qslog::Logger::log(QSLOG_BASE_SOURCE_LOCATION, level, tag, FMT_STRING(format), ##__VA_ARGS__)
 
 #define QSLOGV(format, ...) (QSLOG(qslog::LogLevel::VERBOSE, QSLOG_TAG, format, ##__VA_ARGS__))
 #define QSLOGD(format, ...) (QSLOG(qslog::LogLevel::DEBUG, QSLOG_TAG, format, ##__VA_ARGS__))
