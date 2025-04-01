@@ -14,6 +14,8 @@ public:
 
     virtual void log(const LogEntry &msg) = 0;
 
+    virtual void sync() {}
+
 private:
     std::string_view sinkName_;
 };

@@ -1,12 +1,12 @@
 #define QSLOG_TAG "becnmark"
 
-#include "qslog/FileSink.h"
+#include "qslog/CompressFileSink.h"
 #include "qslog/Logger.h"
 #include <benchmark/benchmark.h>
 
-std::shared_ptr<qslog::FileSink> fileSink = nullptr;
+std::shared_ptr<qslog::CompressFileSink> fileSink = nullptr;
 static int initFileSink() {
-    fileSink = std::make_shared<qslog::FileSink>("file", "fileSinkBench.log", true);
+    fileSink = std::make_shared<qslog::CompressFileSink>("file", "fileSinkBench.log", true);
     qslog::Logger::addSink(fileSink);
     return 0;
 }

@@ -23,4 +23,10 @@ void Logger::addSink(std::shared_ptr<BaseSink> sink) {
     sinks_.push_back(std::move(sink));
 }
 
+void Logger::sync() {
+    for (auto &sink: sinks_) {
+        sink->sync();
+    }
+}
+
 }// namespace qslog

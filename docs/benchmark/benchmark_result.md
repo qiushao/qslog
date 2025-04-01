@@ -48,5 +48,5 @@ stackcollapse-perf.pl perf.unfold &> perf.folded
 flamegraph.pl perf.folded > perf.svg
 ```
 
-FileSink 使用 fmt 来格式化，写入文件加缓存之后，性能翻了十几倍。
+CompressFileSink 使用 fmt 来格式化，写入文件加缓存之后，性能翻了十几倍。
 从火焰图上看，文件写入占 16%， fmt 格式化相关操作占了大头，加起来有 50% 左右的时间。 光是时间的格式化都占了 10%.

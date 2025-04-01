@@ -951,7 +951,7 @@
 <text  x="932.72" y="703.5" ></text>
 </g>
 <g >
-<title>qslog::FileSink::log (23,311,518 samples, 0.44%)</title><rect x="783.5" y="645" width="5.2" height="15.0" fill="rgb(234,137,32)" rx="2" ry="2" />
+<title>qslog::CompressFileSink::log (23,311,518 samples, 0.44%)</title><rect x="783.5" y="645" width="5.2" height="15.0" fill="rgb(234,137,32)" rx="2" ry="2" />
 <text  x="786.49" y="655.5" ></text>
 </g>
 <g >
@@ -1015,7 +1015,7 @@
 <text  x="848.61" y="255.5" ></text>
 </g>
 <g >
-<title>qslog::FileSink::log (13,362,667 samples, 0.25%)</title><rect x="779.8" y="677" width="3.0" height="15.0" fill="rgb(234,137,32)" rx="2" ry="2" />
+<title>qslog::CompressFileSink::log (13,362,667 samples, 0.25%)</title><rect x="779.8" y="677" width="3.0" height="15.0" fill="rgb(234,137,32)" rx="2" ry="2" />
 <text  x="782.77" y="687.5" ></text>
 </g>
 <g >
@@ -1451,7 +1451,7 @@
 <text  x="355.19" y="607.5" >[[kernel.kallsyms]]</text>
 </g>
 <g >
-<title>qslog::FileSink::~FileSink (33,302,526 samples, 0.63%)</title><rect x="782.8" y="677" width="7.4" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<title>qslog::CompressFileSink::CompressFileSinkFileSink (33,302,526 samples, 0.63%)</title><rect x="782.8" y="677" width="7.4" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
 <text  x="785.75" y="687.5" ></text>
 </g>
 <g >

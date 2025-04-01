@@ -4,7 +4,7 @@ set(local_source
     api/Logger.cpp
     api/BaseSink.cpp
     api/StdoutSink.cpp
-    api/FileSink.cpp
+    api/CompressFileSink.cpp
     api/LogEntry.cpp
     api/common.cpp
     FileUtils.cpp
