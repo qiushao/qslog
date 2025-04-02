@@ -12,3 +12,5 @@ set(local_source
 set(local_export_header api/include)
 set(local_dependency fmt::fmt)
 build_static_library()
+
+add_subdirectory(decompress)

@@ -1,6 +1,7 @@
 #ifndef QSLOG_LOGENTRY_H
 #define QSLOG_LOGENTRY_H
 
+#include "fmt/args.h"
 #include "qslog/common.h"
 #include <chrono>
 
@@ -18,7 +19,9 @@ struct LogEntry {
 
     std::string formatLogEntry() const;
 
-    std::string parserMsg() const;
+    static std::string parserMsg(const std::vector<uint8_t> &buffer, const std::string &format);
+
+    static bool extractArgs(const std::vector<uint8_t> &buffer, fmt::dynamic_format_arg_store<fmt::format_context> &argStore);
 };
 
 }// namespace qslog

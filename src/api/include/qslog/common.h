@@ -21,5 +21,7 @@ enum LogLevel {
 
 char getLevelName(LogLevel level);
 
+std::string formatTimespec(uint64_t ts);
+
 }// namespace qslog
 #endif//QSLOG_COMMON_H

@@ -31,7 +31,8 @@ void CompressFileSink::log(const LogEntry &entry) {
         }
 
         uint32_t formatId = getFormatId(entry);
-        writeLogEntry(entry, formatId, tsDiff);
+        auto tsDiffMs = (uint16_t) (tsDiff / 1000000);
+        writeLogEntry(entry, formatId, tsDiffMs);
     }
 }
 

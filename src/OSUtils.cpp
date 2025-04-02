@@ -27,10 +27,10 @@ int32_t OSUtils::getTid() {
     return cachedTid;
 }
 
-uint64_t OSUtils::realTimeMillisecond() {
+uint64_t OSUtils::realTimeNanosecond() {
     struct timespec ts {};
     clock_gettime(CLOCK_REALTIME_COARSE, &ts);
-    return (uint64_t(ts.tv_sec) * 1000000000LL + ts.tv_nsec) / 1000000;
+    return (uint64_t(ts.tv_sec) * 1000000000LL + ts.tv_nsec);
 }
 
 }// namespace qslog
