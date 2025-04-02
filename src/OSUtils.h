@@ -11,7 +11,7 @@ public:
 
     static int32_t getTid();
 
-    static uint32_t realTimeMillisecond();
+    static uint64_t realTimeMillisecond();
 };
 
 }// namespace qslog

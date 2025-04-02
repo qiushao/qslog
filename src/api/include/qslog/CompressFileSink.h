@@ -17,18 +17,23 @@ public:
     void sync() override;
 
 private:
-    void write(const void *data, uint32_t size);
-    uint32_t getFormatId(const std::string &format);
+    void openFile(bool truncate);
+    uint16_t getFormatId(const LogEntry &entry);
     void doSync();
+    void writeBuffer(const void *data, uint32_t size);
+    void writePidInfoEntry();
+    void writeTsInfoEntry();
+    void writeFormatEntry(const LogEntry &entry, uint16_t formatId);
+    void writeLogEntry(const LogEntry &entry, uint16_t formatId, uint16_t tsDiff);
 
     static constexpr int kBufferSize = 512 * 1024;
-    void openFile(bool truncate);
     std::ofstream outFile_;
     std::string fileName_;
     uint8_t buf_[kBufferSize]{0};
     uint32_t pos_ = 0;
     std::mutex mutex_;
-    std::unordered_map<std::string, uint32_t> formatIdMap_;
+    std::unordered_map<std::string, uint16_t> formatIdMap_;
+    uint64_t lastTs_ = 0;
 };
 
 }// namespace qslog

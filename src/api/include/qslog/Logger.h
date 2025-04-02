@@ -169,15 +169,18 @@ public:
     static void sync();
 
     template<typename... Args>
-    static void log(std::string_view sourceLocation, LogLevel level, std::string_view tag, fmt::format_string<Args...> format, Args &&...args) {
+    static void log(std::string_view sourceLocation, std::string_view function,
+                    LogLevel level, std::string_view tag, fmt::format_string<Args...> format, Args &&...args) {
         if (level < logLevel_) {
             return;
         }
 
+        std::string formatStr = fmt::format("{} [{} {}] {}", tag, sourceLocation, function, format.str);
+        uint8_t argc = sizeof...(args);
         std::vector<uint8_t> argStore;
         // 使用折叠表达式序列化参数
         (serializeArg(argStore, std::forward<Args>(args)), ...);
-        LogEntry entry(sourceLocation, level, tag, format.str.data(), argStore);
+        LogEntry entry(level, formatStr, argc, argStore);
 
         if (logHandler_) {
             logHandler_(entry);
@@ -189,13 +192,14 @@ public:
         }
     }
 
+private:
     static LogLevel logLevel_;
     static LogHandler logHandler_;
     static std::vector<std::shared_ptr<BaseSink>> sinks_;
 };
 
 #define QSLOG(level, tag, format, ...) \
-    qslog::Logger::log(QSLOG_BASE_SOURCE_LOCATION, level, tag, FMT_STRING(format), ##__VA_ARGS__)
+    qslog::Logger::log(QSLOG_BASE_SOURCE_LOCATION, __FUNCTION__, level, tag, FMT_STRING(format), ##__VA_ARGS__)
 
 #define QSLOGV(format, ...) (QSLOG(qslog::LogLevel::VERBOSE, QSLOG_TAG, format, ##__VA_ARGS__))
 #define QSLOGD(format, ...) (QSLOG(qslog::LogLevel::DEBUG, QSLOG_TAG, format, ##__VA_ARGS__))

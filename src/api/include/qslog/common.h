@@ -9,6 +9,7 @@
 namespace qslog {
 
 enum LogLevel {
+    ALL = 0,
     VERBOSE = 1,
     DEBUG = 2,
     INFO = 3,
@@ -18,7 +19,7 @@ enum LogLevel {
     SILENT = 7
 };
 
-std::string_view getLevelName(LogLevel level);
+char getLevelName(LogLevel level);
 
 }// namespace qslog
 #endif//QSLOG_COMMON_H

@@ -11,7 +11,7 @@ if(QSLOG_CLANG_TIDY_ENABLE AND ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     message(STATUS "enabled clang-tidy")
 endif()
 
-option(QSLOG_BUILD_TESTS "build tests" ON)
+option(QSLOG_BUILD_TESTS "build tests" OFF)
 option(QSLOG_BUILD_BENCHMARKS "build benchmarks" ON)
 option(QSLOG_BUILD_EXAMPLES "build examples" ON)
 
