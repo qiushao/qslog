@@ -39,75 +39,57 @@ bool LogEntry::extractArgs(const std::vector<uint8_t> &buffer, fmt::dynamic_form
     size_t pos = 0;
     while (pos < buffer.size()) {
         uint8_t typeId = buffer[pos++];
-
-        switch (typeId) {
-            case 1: {// bool
-                bool value = *reinterpret_cast<const bool *>(&buffer[pos]);
+        switch (typeId >> 4) {// 高 4 位为参数类型
+            case TypeId::BOOL: {
+                bool value = typeId & 0b00001111;//  低 4 位保存的 bool 值
                 argStore.push_back(value);
                 pos += sizeof(bool);
                 break;
             }
-            case 2: {// int8_t
-                int8_t value = *reinterpret_cast<const int8_t *>(&buffer[pos]);
+            case TypeId::CHAR: {
+                char value = *reinterpret_cast<const char *>(&buffer[pos]);
                 argStore.push_back(value);
-                pos += sizeof(int8_t);
+                pos += sizeof(char);
                 break;
             }
-            case 3: {// int16_t
-                int16_t value = *reinterpret_cast<const int16_t *>(&buffer[pos]);
-                argStore.push_back(value);
-                pos += sizeof(int16_t);
-                break;
-            }
-            case 4: {// int32_t
-                int32_t value = *reinterpret_cast<const int32_t *>(&buffer[pos]);
-                argStore.push_back(value);
-                pos += sizeof(int32_t);
-                break;
-            }
-            case 5: {// int64_t 或指针
-                int64_t value = *reinterpret_cast<const int64_t *>(&buffer[pos]);
-                argStore.push_back(value);
-                pos += sizeof(int64_t);
-                break;
-            }
-            case 6: {// uint8_t
+            case TypeId::UINT8: {
                 uint8_t value = *reinterpret_cast<const uint8_t *>(&buffer[pos]);
-                argStore.push_back(value);
+                uint8_t flag = typeId & 0b00001000;// 第 5 位保存正负号
+                if (flag == 0) {
+                    argStore.push_back(value);
+                } else {
+                    auto sValue = (int8_t) (-value);
+                    argStore.push_back(sValue);
+                }
                 pos += sizeof(uint8_t);
                 break;
             }
-            case 7: {// uint16_t
-                uint16_t value = *reinterpret_cast<const uint16_t *>(&buffer[pos]);
-                argStore.push_back(value);
-                pos += sizeof(uint16_t);
+            case TypeId::UINT64: {
+                size_t nRead;
+                uint64_t value = decodeLEB128(&buffer[pos], buffer.size() - pos, &nRead);
+                uint8_t flag = typeId & 0b00001000;// 第 5 位保存正负号
+                if (flag == 0) {
+                    argStore.push_back(value);
+                } else {
+                    auto sValue = (int64_t) (-value);
+                    argStore.push_back(sValue);
+                }
+                pos += nRead;
                 break;
             }
-            case 8: {// uint32_t
-                uint32_t value = *reinterpret_cast<const uint32_t *>(&buffer[pos]);
-                argStore.push_back(value);
-                pos += sizeof(uint32_t);
-                break;
-            }
-            case 9: {// uint64_t
-                uint64_t value = *reinterpret_cast<const uint64_t *>(&buffer[pos]);
-                argStore.push_back(value);
-                pos += sizeof(uint64_t);
-                break;
-            }
-            case 10: {// float
+            case TypeId::FLOAT: {// float
                 float value = *reinterpret_cast<const float *>(&buffer[pos]);
                 argStore.push_back(value);
                 pos += sizeof(float);
                 break;
             }
-            case 11: {// double
+            case TypeId::DOUBLE: {// double
                 double value = *reinterpret_cast<const double *>(&buffer[pos]);
                 argStore.push_back(value);
                 pos += sizeof(double);
                 break;
             }
-            case 12: {// string
+            case TypeId::STR: {// string
                 uint32_t length = *reinterpret_cast<const uint32_t *>(&buffer[pos]);
                 pos += sizeof(uint32_t);
 
@@ -118,12 +100,6 @@ bool LogEntry::extractArgs(const std::vector<uint8_t> &buffer, fmt::dynamic_form
                 } else {
                     argStore.push_back(std::string());
                 }
-                break;
-            }
-            case 13: {// char
-                char value = *reinterpret_cast<const char *>(&buffer[pos]);
-                argStore.push_back(value);
-                pos += sizeof(char);
                 break;
             }
             default:

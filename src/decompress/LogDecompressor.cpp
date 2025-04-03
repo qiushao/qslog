@@ -150,12 +150,11 @@ bool LogDecompressor::readLogEntry(uint8_t header) {
         std::cerr << "Format ID not found: " << formatId << std::endl;
         return false;
     }
-
     // 获取格式字符串
     std::string formatStr = it->second;
 
     // 读取参数
-    std::vector<uint8_t> argStore;
+    fmt::dynamic_format_arg_store<fmt::format_context> argStore;
     for (uint8_t i = 0; i < argc; ++i) {
         // 读取参数类型
         uint8_t argType;
@@ -163,105 +162,63 @@ bool LogDecompressor::readLogEntry(uint8_t header) {
             return false;
         }
 
-        argStore.push_back(argType);
-
         // 根据参数类型读取参数值
-        switch (argType) {
-            case 1: {// bool
-                bool value;
-                if (!read(value)) return false;
-                argStore.insert(argStore.end(), reinterpret_cast<uint8_t *>(&value),
-                                reinterpret_cast<uint8_t *>(&value) + sizeof(bool));
+        switch (argType >> 4) {// 高 4 位为参数类型
+            case TypeId::BOOL: {
+                bool value = argType & 0b00001111;//  低 4 位保存的 bool 值
+                argStore.push_back(value);
                 break;
             }
-            case 2: {// int8_t
-                int8_t value;
-                if (!read(value)) return false;
-                argStore.insert(argStore.end(), reinterpret_cast<uint8_t *>(&value),
-                                reinterpret_cast<uint8_t *>(&value) + sizeof(int8_t));
-                break;
-            }
-            case 3: {// int16_t
-                int16_t value;
-                if (!read(value)) return false;
-                argStore.insert(argStore.end(), reinterpret_cast<uint8_t *>(&value),
-                                reinterpret_cast<uint8_t *>(&value) + sizeof(int16_t));
-                break;
-            }
-            case 4: {// int32_t
-                int32_t value;
-                if (!read(value)) return false;
-                argStore.insert(argStore.end(), reinterpret_cast<uint8_t *>(&value),
-                                reinterpret_cast<uint8_t *>(&value) + sizeof(int32_t));
-                break;
-            }
-            case 5: {// int64_t
-                int64_t value;
-                if (!read(value)) return false;
-                argStore.insert(argStore.end(), reinterpret_cast<uint8_t *>(&value),
-                                reinterpret_cast<uint8_t *>(&value) + sizeof(int64_t));
-                break;
-            }
-            case 6: {// uint8_t
-                uint8_t value;
+            case TypeId::CHAR: {
+                char value;
                 if (!read(value)) return false;
                 argStore.push_back(value);
                 break;
             }
-            case 7: {// uint16_t
-                uint16_t value;
+            case TypeId::UINT8: {
+                uint8_t value;
                 if (!read(value)) return false;
-                argStore.insert(argStore.end(), reinterpret_cast<uint8_t *>(&value),
-                                reinterpret_cast<uint8_t *>(&value) + sizeof(uint16_t));
-                break;
-            }
-            case 8: {// uint32_t
-                uint32_t value;
-                if (!read(value)) return false;
-                argStore.insert(argStore.end(), reinterpret_cast<uint8_t *>(&value),
-                                reinterpret_cast<uint8_t *>(&value) + sizeof(uint32_t));
-                break;
-            }
-            case 9: {// uint64_t
-                uint64_t value;
-                if (!read(value)) return false;
-                argStore.insert(argStore.end(), reinterpret_cast<uint8_t *>(&value),
-                                reinterpret_cast<uint8_t *>(&value) + sizeof(uint64_t));
-                break;
-            }
-            case 10: {// float
-                float value;
-                if (!read(value)) return false;
-                argStore.insert(argStore.end(), reinterpret_cast<uint8_t *>(&value),
-                                reinterpret_cast<uint8_t *>(&value) + sizeof(float));
-                break;
-            }
-            case 11: {// double
-                double value;
-                if (!read(value)) return false;
-                argStore.insert(argStore.end(), reinterpret_cast<uint8_t *>(&value),
-                                reinterpret_cast<uint8_t *>(&value) + sizeof(double));
-                break;
-            }
-            case 12: {// string
-                uint32_t length;
-                if (!read(length)) return false;
-
-                argStore.insert(argStore.end(), reinterpret_cast<uint8_t *>(&length),
-                                reinterpret_cast<uint8_t *>(&length) + sizeof(uint32_t));
-
-                if (length > 0) {
-                    std::string value(length, '\0');
-                    if (!readBuffer(&value[0], length)) return false;
-                    argStore.insert(argStore.end(), value.begin(), value.end());
+                uint8_t flag = argType & 0b00001000;// 第 5 位保存正负号
+                if (flag == 0) {
+                    argStore.push_back(value);
+                } else {
+                    auto sValue = (int8_t) (-value);
+                    argStore.push_back(sValue);
                 }
                 break;
             }
-            case 13: {// char
-                char value;
+            case TypeId::UINT64: {
+                uint64_t value = decodeLEB128(inFile_);
+                uint8_t flag = argType & 0b00001000;// 第 5 位保存正负号
+                if (flag == 0) {
+                    argStore.push_back(value);
+                } else {
+                    auto sValue = (int64_t) (-value);
+                    argStore.push_back(sValue);
+                }
+                break;
+            }
+            case TypeId::FLOAT: {
+                float value;
                 if (!read(value)) return false;
-                argStore.insert(argStore.end(), reinterpret_cast<uint8_t *>(&value),
-                                reinterpret_cast<uint8_t *>(&value) + sizeof(char));
+                argStore.push_back(value);
+                break;
+            }
+            case TypeId::DOUBLE: {// double
+                double value;
+                if (!read(value)) return false;
+                argStore.push_back(value);
+                break;
+            }
+            case TypeId::STR: {// string
+                uint32_t length = decodeLEB128(inFile_);
+                if (length > 0) {
+                    std::string value(length, '\0');
+                    if (!readBuffer(&value[0], length)) return false;
+                    argStore.push_back(value);
+                } else {
+                    argStore.push_back(std::string());
+                }
                 break;
             }
             default:
@@ -272,7 +229,9 @@ bool LogDecompressor::readLogEntry(uint8_t header) {
 
     // 格式化日志条目并写入输出文件
     auto timeStr = formatTimespec(timestamp);
-    auto msg = LogEntry::parserMsg(argStore, formatStr);
+    fmt::memory_buffer buf;
+    fmt::vformat_to(fmt::appender(buf), formatStr, argStore);
+    std::string_view msg(buf.data(), buf.size());
     std::string formattedLog = fmt::format("{} {} {} {}", timeStr, pid_, tid, msg);
     outFile_ << formattedLog << std::endl;
 

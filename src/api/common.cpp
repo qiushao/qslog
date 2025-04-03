@@ -1,5 +1,4 @@
 #include "qslog/common.h"
-#include <iomanip>
 #include <fstream>
 
 namespace qslog {
@@ -37,21 +36,29 @@ std::string formatTimespec(uint64_t ts) {
  * @param output 输出缓冲区，必须预先分配足够空间
  * @return 编码后的字节数
  */
-size_t encodeLEB128(uint64_t value, uint8_t* output) {
+size_t encodeLEB128(uint64_t value, uint8_t *output) {
     size_t size = 0;
-
     do {
         uint8_t byte = value & 0x7F;
         value >>= 7;
-
         if (value != 0) {
-            byte |= 0x80; // 设置延续位
+            byte |= 0x80;// 设置延续位
         }
-
         output[size++] = byte;
     } while (value != 0);
-
     return size;
+}
+
+// LEB128 无符号整数编码
+void encodeLEB128(uint64_t value, std::vector<uint8_t> &output) {
+    do {
+        uint8_t byte = value & 0x7F;
+        value >>= 7;
+        if (value != 0) {
+            byte |= 0x80;// 设置延续位
+        }
+        output.push_back(byte);
+    } while (value != 0);
 }
 
 /**
@@ -62,7 +69,7 @@ size_t encodeLEB128(uint64_t value, uint8_t* output) {
  * @param bytesRead 输出参数，存储读取的字节数
  * @return 解码后的无符号整数
  */
-uint64_t decodeLEB128(const uint8_t* input, size_t size, size_t* bytesRead) {
+uint64_t decodeLEB128(const uint8_t *input, size_t size, size_t *bytesRead) {
     uint64_t result = 0;
     uint8_t shift = 0;
     size_t pos = 0;
@@ -84,14 +91,14 @@ uint64_t decodeLEB128(const uint8_t* input, size_t size, size_t* bytesRead) {
     return result;
 }
 
-uint64_t decodeLEB128(std::ifstream& inFile) {
+uint64_t decodeLEB128(std::ifstream &inFile) {
     uint64_t result = 0;
     uint8_t shift = 0;
     uint8_t byte;
 
     do {
         // 从文件中读取一个字节
-        inFile.read(reinterpret_cast<char*>(&byte), 1);
+        inFile.read(reinterpret_cast<char *>(&byte), 1);
 
         // 检查是否读取成功
         if (!inFile) {

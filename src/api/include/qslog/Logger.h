@@ -35,15 +35,14 @@ static constexpr size_t getSerializedSize() {
 
     // 字符串类型 - 这里只能计算固定部分，字符串内容长度是运行时才知道的
     if constexpr (std::is_same_v<CleanType, std::string> ||
-                       std::is_same_v<CleanType, std::string_view>) {
+                  std::is_same_v<CleanType, std::string_view>) {
         // 注意：字符串内容的长度在运行时才能确定
     }
     // C风格字符串
     else if constexpr (std::is_pointer_v<CleanType> &&
-                       (std::is_same_v<std::remove_const_t<std::remove_pointer_t<CleanType>>, char>)) {
+                       (std::is_same_v<std::remove_const_t<std::remove_pointer_t<CleanType>>, char>) ) {
         // 注意：字符串内容的长度在运行时才能确定
-    }
-    else {
+    } else {
         size += sizeof(CleanType);
     }
 
@@ -54,7 +53,7 @@ static constexpr size_t getSerializedSize() {
 template<typename... Args>
 static constexpr size_t getMinSerializedSize() {
     if constexpr (sizeof...(Args) == 0) {
-        return 0; // 没有参数时返回0
+        return 0;// 没有参数时返回0
     } else {
         return (getSerializedSize<Args>() + ...);
     }
@@ -75,52 +74,56 @@ template<typename T>
 static void serializeArg(std::vector<uint8_t> &buffer, T &&arg) {
     using CleanType = std::remove_reference_t<T>;
 
-    // 确定类型ID
+    // 确定类型ID (高4位保存数据类型)
     uint8_t typeId;
 
-    // 布尔类型
     if constexpr (std::is_same_v<CleanType, bool>) {
-        typeId = 1;
+        // 布尔类型 - 直接将值存储在typeId的低4位
+        typeId = (TypeId::BOOL << 4) | (arg ? 1 : 0);// 高4位为0表示bool类型，低4位存储值
         buffer.push_back(typeId);
-        buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(&arg),
-                      reinterpret_cast<const uint8_t *>(&arg) + sizeof(bool));
-    }
-    // 有符号整型
-    else if constexpr (std::is_signed_v<CleanType> && std::is_integral_v<CleanType>) {
-        if constexpr (sizeof(CleanType) == 1) {
-            typeId = 2;// int8_t
-        } else if constexpr (sizeof(CleanType) == 2) {
-            typeId = 3;// int16_t
-        } else if constexpr (sizeof(CleanType) == 4) {
-            typeId = 4;// int32_t
-        } else if constexpr (sizeof(CleanType) == 8) {
-            typeId = 5;// int64_t
+    } else if constexpr (std::is_same_v<CleanType, char>) {
+        // char 直接存储，不使用编码
+        typeId = TypeId::CHAR << 4;
+        buffer.push_back(typeId);
+        buffer.push_back(static_cast<uint8_t>(arg));
+    } else if constexpr (std::is_same_v<CleanType, uint8_t>) {
+        // uint8 直接存储，不使用编码
+        typeId = TypeId::UINT8 << 4;
+        buffer.push_back(typeId);
+        buffer.push_back(static_cast<uint8_t>(arg));
+    } else if constexpr (std::is_same_v<CleanType, int8_t>) {
+        // int8 正数直接转换成 uint8，负数先取反，把正负号位保存在 typeId 第 5 位， 为1 表示负数
+        typeId = TypeId::UINT8 << 4;
+        uint8_t tmp = arg;
+        if (arg < 0) {
+            tmp = -arg;
+            typeId |= 1 << 5;
         }
         buffer.push_back(typeId);
-        buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(&arg),
-                      reinterpret_cast<const uint8_t *>(&arg) + sizeof(CleanType));
-    }
-    // 无符号整型
-    else if constexpr (std::is_unsigned_v<CleanType> && std::is_integral_v<CleanType>) {
-        if constexpr (sizeof(CleanType) == 1) {
-            typeId = 6;// uint8_t
-        } else if constexpr (sizeof(CleanType) == 2) {
-            typeId = 7;// uint16_t
-        } else if constexpr (sizeof(CleanType) == 4) {
-            typeId = 8;// uint32_t
-        } else if constexpr (sizeof(CleanType) == 8) {
-            typeId = 9;// uint64_t
+        buffer.push_back(static_cast<uint8_t>(tmp));
+    } else if constexpr (std::is_unsigned_v<CleanType> && std::is_integral_v<CleanType>) {
+        // 无符号整型 uint16, 32, 64, 统一按 uint64 位处理
+        typeId = TypeId::UINT64 << 4;// uint64_t
+        buffer.push_back(typeId);
+        // 使用LEB128编码
+        auto value = static_cast<uint64_t>(arg);
+        encodeLEB128(value, buffer);
+    } else if constexpr (std::is_signed_v<CleanType> && std::is_integral_v<CleanType>) {
+        // 有符号整型int16, 32, 64, 统一按 uint64 位处理
+        typeId = TypeId::UINT64 << 4;// uint64_t
+        uint64_t tmp = arg;
+        if (arg < 0) {
+            tmp = -arg;
+            typeId |= 1 << 5;
         }
         buffer.push_back(typeId);
-        buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(&arg),
-                      reinterpret_cast<const uint8_t *>(&arg) + sizeof(CleanType));
-    }
-    // 浮点类型
-    else if constexpr (std::is_floating_point_v<CleanType>) {
+        encodeLEB128(tmp, buffer);
+    } else if constexpr (std::is_floating_point_v<CleanType>) {
+        // 浮点类型
         if constexpr (sizeof(CleanType) == 4) {
-            typeId = 10;// float
+            typeId = TypeId::FLOAT << 4;// float
         } else if constexpr (sizeof(CleanType) == 8) {
-            typeId = 11;// double
+            typeId = TypeId::DOUBLE << 4;// double
         }
         buffer.push_back(typeId);
         buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(&arg),
@@ -129,27 +132,29 @@ static void serializeArg(std::vector<uint8_t> &buffer, T &&arg) {
     // 字符串类型
     else if constexpr (std::is_same_v<CleanType, std::string> ||
                        std::is_same_v<CleanType, std::string_view>) {
-        typeId = 12;
+        typeId = TypeId::STR << 4;
         buffer.push_back(typeId);
+        // 字符串长度
         uint32_t length = arg.length();
-        buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(&length),
-                      reinterpret_cast<const uint8_t *>(&length) + sizeof(length));
+        encodeLEB128(length, buffer);
+        // 字符串内容
         buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(arg.data()),
                       reinterpret_cast<const uint8_t *>(arg.data()) + length);
     }
     // C风格字符串 (const char* 和 char*)
     else if constexpr (std::is_pointer_v<CleanType> &&
                        (std::is_same_v<std::remove_const_t<std::remove_pointer_t<CleanType>>, char>) ) {
-        typeId = 12;
+        typeId = TypeId::STR << 4;
         buffer.push_back(typeId);
+
         if (arg == nullptr) {
-            uint32_t length = 0;
-            buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(&length),
-                          reinterpret_cast<const uint8_t *>(&length) + sizeof(length));
+            // 空字符串，长度为0
+            buffer.push_back(0);// LEB128 for 0
         } else {
+            // 字符串长度
             uint32_t length = std::strlen(arg);
-            buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(&length),
-                          reinterpret_cast<const uint8_t *>(&length) + sizeof(length));
+            encodeLEB128(length, buffer);
+            // 字符串内容
             buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(arg),
                           reinterpret_cast<const uint8_t *>(arg) + length);
         }
@@ -157,32 +162,22 @@ static void serializeArg(std::vector<uint8_t> &buffer, T &&arg) {
     // 字符数组（字符串字面量 "hello"）
     else if constexpr (std::is_array_v<CleanType> &&
                        std::is_same_v<std::remove_const_t<std::remove_extent_t<CleanType>>, char>) {
-        typeId = 12;
+        typeId = TypeId::STR << 4;
         buffer.push_back(typeId);
+        // 字符串长度
         uint32_t length = std::strlen(arg);
-        buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(&length),
-                      reinterpret_cast<const uint8_t *>(&length) + sizeof(length));
+        encodeLEB128(length, buffer);
+        // 字符串内容
         buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(arg),
                       reinterpret_cast<const uint8_t *>(arg) + length);
-    }
-    // 字符类型
-    else if constexpr (std::is_same_v<CleanType, char>) {
-        typeId = 13;
-        buffer.push_back(typeId);
-        buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(&arg),
-                      reinterpret_cast<const uint8_t *>(&arg) + sizeof(char));
     }
     // 普通指针类型 (除了已处理的 char*)
     else if constexpr (std::is_pointer_v<CleanType> &&
                        !std::is_same_v<std::remove_const_t<std::remove_pointer_t<CleanType>>, char>) {
-        // 使用与 long 相同的 typeId (int64_t)
-        typeId = 5;// 与 int64_t 相同
+        typeId = TypeId::UINT64 << 4;// 与 uint64_t 相同
         buffer.push_back(typeId);
-
-        // 将指针转换为 uintptr_t 并序列化
-        auto ptrValue = reinterpret_cast<uintptr_t>(arg);
-        buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(&ptrValue),
-                      reinterpret_cast<const uint8_t *>(&ptrValue) + sizeof(uintptr_t));
+        auto value = reinterpret_cast<uint64_t>(arg);
+        encodeLEB128(value, buffer);
     }
     // un support type
     else {
