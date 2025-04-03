@@ -94,13 +94,14 @@ static void serializeArg(std::vector<uint8_t> &buffer, T &&arg) {
     } else if constexpr (std::is_same_v<CleanType, int8_t>) {
         // int8 正数直接转换成 uint8，负数先取反，把正负号位保存在 typeId 第 5 位， 为1 表示负数
         typeId = TypeId::UINT8 << 4;
-        uint8_t tmp = arg;
+        uint8_t value = arg;
         if (arg < 0) {
-            tmp = -arg;
+            int16_t tmp = arg;
+            value = -tmp;
             typeId |= 1 << 3;
         }
         buffer.push_back(typeId);
-        buffer.push_back(static_cast<uint8_t>(tmp));
+        buffer.push_back(static_cast<uint8_t>(value));
     } else if constexpr (std::is_unsigned_v<CleanType> && std::is_integral_v<CleanType>) {
         // 无符号整型 uint16, 32, 64, 统一按 uint64 位处理
         typeId = TypeId::UINT64 << 4;// uint64_t
@@ -111,13 +112,15 @@ static void serializeArg(std::vector<uint8_t> &buffer, T &&arg) {
     } else if constexpr (std::is_signed_v<CleanType> && std::is_integral_v<CleanType>) {
         // 有符号整型int16, 32, 64, 统一按 uint64 位处理
         typeId = TypeId::UINT64 << 4;// uint64_t
-        uint64_t tmp = arg;
+        uint64_t value = arg;
         if (arg < 0) {
-            tmp = -arg;
+            // INT32_MIN 需要特殊处理，先提升为 int64_t， 再取反，否则会越界
+            int64_t tmp = arg;
+            value = -tmp;
             typeId |= 1 << 3;
         }
         buffer.push_back(typeId);
-        encodeLEB128(tmp, buffer);
+        encodeLEB128(value, buffer);
     } else if constexpr (std::is_floating_point_v<CleanType>) {
         // 浮点类型
         if constexpr (sizeof(CleanType) == 4) {
@@ -207,7 +210,7 @@ public:
 
         fmt::memory_buffer buf;
         auto formatArgs = fmt::make_format_args(tag, sourceLocation, function, format.str);
-        fmt::vformat_to(fmt::appender(buf), "{} {} {} {}", formatArgs);
+        fmt::vformat_to(fmt::appender(buf), "{} [{} {}] {}", formatArgs);
         std::string_view formatStr{buf.data(), buf.size()};
 
         std::vector<uint8_t> argStore;

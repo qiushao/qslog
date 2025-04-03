@@ -15,14 +15,18 @@ LogEntry::LogEntry(LogLevel level, std::string_view format, uint8_t argc, std::v
       argStore_(std::move(args)) {
 }
 
-std::string LogEntry::formatLogEntry() const {
+void LogEntry::formatLogEntry(fmt::memory_buffer &buf) const {
     static int32_t pid = OSUtils::getPid();
     auto levelName = getLevelName(level_);
     std::string msg = parserMsg(argStore_, format_);
     auto timeStr = formatTimespec(time_);
-    fmt::memory_buffer buf;
     auto formatArgs = fmt::make_format_args(timeStr, pid, tid_, levelName, msg);
     fmt::vformat_to(fmt::appender(buf), "{} {} {} {} {}", formatArgs);
+}
+
+std::string LogEntry::formatLogEntry() const {
+    fmt::memory_buffer buf;
+    formatLogEntry(buf);
     return {buf.data(), buf.size()};
 }
 

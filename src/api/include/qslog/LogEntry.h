@@ -19,6 +19,8 @@ struct LogEntry {
 
     std::string formatLogEntry() const;
 
+    void formatLogEntry(fmt::memory_buffer &buf) const;
+
     static std::string parserMsg(const std::vector<uint8_t> &buffer, const std::string &format);
 
     static bool extractArgs(const std::vector<uint8_t> &buffer, fmt::dynamic_format_arg_store<fmt::format_context> &argStore);
