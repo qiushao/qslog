@@ -45,11 +45,30 @@ uint16 的最大值是 65535, 一般来说，一个应用的日志的点有个�
 
 其中 args 按如下格式存储：
 
-| arg0 type : 1 byte | arg0 | arg1 type : 1 byte | arg1 | ... |
-| ------------------ | ---- | ------------------ | ---- | --- |
+| arg0 type id : 4 bits | rest : 4 bits | arg0 | arg1 type | arg1 | ... |
+| --------------------- | ------------- | ---- | --------- | ---- | --- |
 
-如果要进一步压缩，可以考虑整数变长编码，比如 BqLog 使用了 VLQ 编码。每行日志可以再减少两三个字节。
 
+arg typeId 高4位为参数类型，定义如下：
+```
+enum TypeId {
+    BOOL = 0,
+    CHAR = 1,
+    UINT8 = 2,
+    UINT64 = 3,
+    FLOAT = 4,
+    DOUBLE = 5,
+    STR = 6
+};
+```
+
+对于 bool 类型来说，低4位用于保存值，可以节省一个字节。
+为什么没有 uint16, uint32?
+因为这几种类型都采用变长编码，都当 64 处理即可。
+为什么没有 int8, int16, int32, int64?
+int8 为正数当 uint8 处理，负数先取反，再当 uint8 处理，正负号保存在 typeid 第 5 位
+正数都当 uint64 处理，负数先取反，再当 uint64 处理，正负号保存在 typeid 第 5 位
+遇到类型为 uint64 按变长编码来处理。typeid 第 5 位为 1 时，取反即可。
 
 ### 何时写入 info entry
 pid info entry 在进程启动，打开日志文件的时候就写入，后续不再写入。
@@ -62,8 +81,13 @@ pid info entry 在进程启动，打开日志文件的时候就写入，后续�
 
 ## 解压日志文件
 设置变量 pid,  last_ts, hashMap<uint16, string> formatMap
-从头开始解析每个 entry, 
+从头开始解析每个 entry,
 是 pid info entry 则更新 pid 变量，
 是 ts info entry 则更新 last_ts 变量，
 是 format entry，则更新 formatMap 数据，
 是 log entry，则提取 formatId, 从 formatMap 中查询 format str, 提取 args, 调用 fmt 进行格式化，写入输出文件。
+
+目前使用整数变长编码 LEB128 之前，不打印字条串变量的话，压缩比能达到 9 左右，打印字符串的话，只能达到 3 左右。
+所以字符串变量的压缩也要考虑。
+
+xlog 的日志压缩比在 8 左右。

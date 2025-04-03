@@ -97,7 +97,7 @@ static void serializeArg(std::vector<uint8_t> &buffer, T &&arg) {
         uint8_t tmp = arg;
         if (arg < 0) {
             tmp = -arg;
-            typeId |= 1 << 5;
+            typeId |= 1 << 3;
         }
         buffer.push_back(typeId);
         buffer.push_back(static_cast<uint8_t>(tmp));
@@ -114,7 +114,7 @@ static void serializeArg(std::vector<uint8_t> &buffer, T &&arg) {
         uint64_t tmp = arg;
         if (arg < 0) {
             tmp = -arg;
-            typeId |= 1 << 5;
+            typeId |= 1 << 3;
         }
         buffer.push_back(typeId);
         encodeLEB128(tmp, buffer);
