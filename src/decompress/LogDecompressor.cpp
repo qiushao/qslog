@@ -134,25 +134,15 @@ bool LogDecompressor::readLogEntry(uint8_t header) {
     uint8_t argc = header & 0x3F;
 
     // 读取时间戳差值
-    uint16_t tsDiff;
-    if (!read(tsDiff)) {
-        return false;
-    }
-
+    uint16_t tsDiff = decodeLEB128(inFile_);
     // 计算实际时间戳
     uint64_t timestamp = lastTs_ + tsDiff * 1000000;
 
     // 读取格式ID
-    uint16_t formatId;
-    if (!read(formatId)) {
-        return false;
-    }
+    uint16_t formatId = decodeLEB128(inFile_);
 
     // 读取线程ID
-    int32_t tid;
-    if (!read(tid)) {
-        return false;
-    }
+    uint32_t tid = decodeLEB128(inFile_);
 
     // 检查格式ID是否存在
     auto it = formatMap_.find(formatId);

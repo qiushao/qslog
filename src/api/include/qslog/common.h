@@ -23,5 +23,11 @@ char getLevelName(LogLevel level);
 
 std::string formatTimespec(uint64_t ts);
 
+size_t encodeLEB128(uint64_t value, uint8_t* output);
+
+uint64_t decodeLEB128(const uint8_t* input, size_t size, size_t* bytesRead);
+
+uint64_t decodeLEB128(std::ifstream& inFile);
+
 }// namespace qslog
 #endif//QSLOG_COMMON_H

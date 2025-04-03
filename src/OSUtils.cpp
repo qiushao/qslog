@@ -29,7 +29,7 @@ int32_t OSUtils::getTid() {
 
 uint64_t OSUtils::realTimeNanosecond() {
     struct timespec ts {};
-    clock_gettime(CLOCK_REALTIME_COARSE, &ts);
+    clock_gettime(CLOCK_REALTIME, &ts);
     return (uint64_t(ts.tv_sec) * 1000000000LL + ts.tv_nsec);
 }
 

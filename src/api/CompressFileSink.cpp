@@ -21,17 +21,17 @@ void CompressFileSink::log(const LogEntry &entry) {
         return;
     }
 
-    uint64_t tsDiff = entry.time_ - lastTs_;
+    uint64_t tsDiffMs = (entry.time_ - lastTs_) / 1000000;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (tsDiff > 65535) {
+        if (tsDiffMs > 16384) {
+            // 2 ^ 14 = 16384, 16 秒
             lastTs_ = entry.time_;
-            tsDiff = 0;
+            tsDiffMs = 0;
             writeTsInfoEntry();
         }
 
         uint32_t formatId = getFormatId(entry);
-        auto tsDiffMs = (uint16_t) (tsDiff / 1000000);
         writeLogEntry(entry, formatId, tsDiffMs);
     }
 }
@@ -82,6 +82,7 @@ void CompressFileSink::writeBuffer(const void *data, uint32_t size) {
 }
 
 void CompressFileSink::writePidInfoEntry() {
+    printf("writePidInfoEntry\n");
     // 构造 info entry 头部
     // 高2位为2(info entry类型)，接下来2位为0(pid类型)，低4位为4(uint32_t的字节数)
     uint8_t header = (2 << 6) | (0 << 4) | 4;
@@ -93,6 +94,7 @@ void CompressFileSink::writePidInfoEntry() {
 }
 
 void CompressFileSink::writeTsInfoEntry() {
+    printf("writeTsInfoEntry\n");
     // 构造 info entry 头部
     // 高2位为2(info entry类型)，接下来2位为1(ts类型)，低4位为8(uint64_t的字节数)
     uint8_t header = (2 << 6) | (1 << 4) | 8;
@@ -108,14 +110,18 @@ void CompressFileSink::writeLogEntry(const LogEntry &entry, uint16_t formatId, u
     uint8_t header = (0 << 6) | (entry.argc_ & 0x3F);
     writeBuffer(&header, sizeof(header));
 
+    uint8_t encodeBuffer[16]{0};
     // 写入时间戳差值
-    writeBuffer(&tsDiff, sizeof(tsDiff));
+    size_t encodeSize = encodeLEB128(tsDiff, encodeBuffer);
+    writeBuffer(encodeBuffer, encodeSize);
 
     // 写入格式ID
-    writeBuffer(&formatId, sizeof(formatId));
+    encodeSize = encodeLEB128(formatId, encodeBuffer);
+    writeBuffer(encodeBuffer, encodeSize);
 
     // 写入线程ID
-    writeBuffer(&entry.tid_, sizeof(entry.tid_));
+    encodeSize = encodeLEB128(entry.tid_, encodeBuffer);
+    writeBuffer(encodeBuffer, encodeSize);
 
     // 写入参数数据
     if (!entry.argStore_.empty()) {
@@ -124,6 +130,7 @@ void CompressFileSink::writeLogEntry(const LogEntry &entry, uint16_t formatId, u
 }
 
 void CompressFileSink::writeFormatEntry(const LogEntry &entry, uint16_t formatId) {
+    printf("writeFormatEntry\n");
     // 构造 format entry 头部
     // 高2位为1(format entry类型)，低6位为日志级别
     uint8_t header = (1 << 6) | (static_cast<uint8_t>(entry.level_) & 0x3F);

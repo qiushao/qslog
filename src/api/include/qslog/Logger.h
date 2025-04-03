@@ -25,6 +25,41 @@ constexpr std::string_view extractFilename(std::string_view path) {
 
 #define QSLOG_BASE_SOURCE_LOCATION (::qslog::extractFilename(QSLOG_SOURCE_LOCATION))
 
+// 计算单个参数序列化后的大小
+template<typename T>
+static constexpr size_t getSerializedSize() {
+    using CleanType = std::remove_reference_t<T>;
+
+    // 类型ID占用1字节
+    size_t size = 1;
+
+    // 字符串类型 - 这里只能计算固定部分，字符串内容长度是运行时才知道的
+    if constexpr (std::is_same_v<CleanType, std::string> ||
+                       std::is_same_v<CleanType, std::string_view>) {
+        // 注意：字符串内容的长度在运行时才能确定
+    }
+    // C风格字符串
+    else if constexpr (std::is_pointer_v<CleanType> &&
+                       (std::is_same_v<std::remove_const_t<std::remove_pointer_t<CleanType>>, char>)) {
+        // 注意：字符串内容的长度在运行时才能确定
+    }
+    else {
+        size += sizeof(CleanType);
+    }
+
+    return size;
+}
+
+// 计算所有参数序列化后的最小大小（不包括字符串内容）
+template<typename... Args>
+static constexpr size_t getMinSerializedSize() {
+    if constexpr (sizeof...(Args) == 0) {
+        return 0; // 没有参数时返回0
+    } else {
+        return (getSerializedSize<Args>() + ...);
+    }
+}
+
 typedef std::function<void(const LogEntry &entry)> LogHandler;
 
 // 用于static_assert的辅助模板，始终返回false
@@ -176,10 +211,16 @@ public:
         }
 
         std::string formatStr = fmt::format("{} [{} {}] {}", tag, sourceLocation, function, format.str);
-        uint8_t argc = sizeof...(args);
         std::vector<uint8_t> argStore;
-        // 使用折叠表达式序列化参数
-        (serializeArg(argStore, std::forward<Args>(args)), ...);
+        constexpr uint8_t argc = sizeof...(args);
+        if constexpr (argc > 0) {
+            // 计算参数序列化后的最小大小
+            constexpr size_t minSize = getMinSerializedSize<Args...>();
+            argStore.reserve(minSize);
+            // 使用折叠表达式序列化参数
+            (serializeArg(argStore, std::forward<Args>(args)), ...);
+        }
+
         LogEntry entry(level, formatStr, argc, argStore);
 
         if (logHandler_) {
