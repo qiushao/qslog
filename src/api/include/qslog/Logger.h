@@ -9,9 +9,9 @@
 
 namespace qslog {
 
-#define QSLOG_LINE(x) #x
-#define QSLOG_LINE_S(x) QSLOG_LINE(x)
-#define QSLOG_SOURCE_LOCATION __FILE__ ":" QSLOG_LINE_S(__LINE__)
+#define QS_STRINGIFY_HELPER(x) #x
+#define QS_STRINGIFY(x) QS_STRINGIFY_HELPER(x)
+#define QS_FILE_LINE __FILE__ ":" QS_STRINGIFY(__LINE__)
 
 // Compile-time string literal parsing to extract filename
 // This is a constexpr function that can be evaluated at compile time
@@ -23,7 +23,7 @@ constexpr std::string_view extractFilename(std::string_view path) {
     return path.substr(pos + 1);
 }
 
-#define QSLOG_BASE_SOURCE_LOCATION (::qslog::extractFilename(QSLOG_SOURCE_LOCATION))
+#define QS_LOG_LOCATION (qslog::extractFilename(QS_FILE_LINE))
 
 // 计算单个参数序列化后的大小
 template<typename T>
@@ -205,7 +205,11 @@ public:
             return;
         }
 
-        std::string formatStr = fmt::format("{} [{} {}] {}", tag, sourceLocation, function, format.str);
+        fmt::memory_buffer buf;
+        auto formatArgs = fmt::make_format_args(tag, sourceLocation, function, format.str);
+        fmt::vformat_to(fmt::appender(buf), "{} {} {} {}", formatArgs);
+        std::string_view formatStr{buf.data(), buf.size()};
+
         std::vector<uint8_t> argStore;
         constexpr uint8_t argc = sizeof...(args);
         if constexpr (argc > 0) {
@@ -235,7 +239,7 @@ private:
 };
 
 #define QSLOG(level, tag, format, ...) \
-    qslog::Logger::log(QSLOG_BASE_SOURCE_LOCATION, __FUNCTION__, level, tag, FMT_STRING(format), ##__VA_ARGS__)
+    qslog::Logger::log(QS_LOG_LOCATION, __FUNCTION__, level, tag, FMT_STRING(format), ##__VA_ARGS__)
 
 #define QSLOGV(format, ...) (QSLOG(qslog::LogLevel::VERBOSE, QSLOG_TAG, format, ##__VA_ARGS__))
 #define QSLOGD(format, ...) (QSLOG(qslog::LogLevel::DEBUG, QSLOG_TAG, format, ##__VA_ARGS__))
