@@ -94,8 +94,9 @@ bool LogEntry::extractArgs(const std::vector<uint8_t> &buffer, fmt::dynamic_form
                 break;
             }
             case TypeId::STR: {// string
-                uint32_t length = *reinterpret_cast<const uint32_t *>(&buffer[pos]);
-                pos += sizeof(uint32_t);
+                size_t nRead;
+                uint64_t length = decodeLEB128(&buffer[pos], buffer.size() - pos, &nRead);
+                pos += nRead;
 
                 if (length > 0) {
                     std::string value(reinterpret_cast<const char *>(&buffer[pos]), length);

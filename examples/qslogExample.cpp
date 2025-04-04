@@ -40,12 +40,12 @@ int main() {
     QSLOGF("int64 test : {}", i64);
     QSLOGI("float test : {}", f);
     QSLOGW("double test : {}", d);
-    //    QSLOGI("string test : {}", str);
-    //    QSLOGF("c string test : {}", p);
-    //    QSLOGI("c array test : {}", cArray);
-    //    QSLOGI("nullptr test : {}", pInt);
-    //    QSLOGI("normal ptr test : {}", sink);
-    //    QSLOGI("share ptr test : {}", fileSink.get());
+    QSLOGI("string test : {}", str);
+    QSLOGF("c string test : {}", p);
+    QSLOGI("c array test : {}", cArray);
+    QSLOGI("nullptr test : {}", pInt);
+    QSLOGI("normal ptr test : {}", sink);
+    QSLOGI("share ptr test : {}", fileSink.get());
     qslog::Logger::sync();
     return 0;
 }
