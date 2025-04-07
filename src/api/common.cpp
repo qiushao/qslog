@@ -29,6 +29,14 @@ std::string formatTimespec(uint64_t ts) {
     return {buffer, pos};
 }
 
+std::string_view getBaseFilename(std::string_view path) {
+    size_t pos = path.find_last_of("/\\");
+    if (pos == std::string_view::npos) {
+        return path;
+    }
+    return path.substr(pos + 1);
+}
+
 /**
  * 将无符号整数编码为LEB128格式
  *

@@ -14,21 +14,21 @@ echo schedutil | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
 
 # result
 ```shell
-2025-03-19T23:32:05+08:00
-Running /home/jingle/projects/clion/qslog/cmake-build-release/benchmarks/qslogBenchmark
-Run on (24 X 4236.04 MHz CPU s)
+2025-04-07T18:09:36+08:00
+Running ./qslogBenchmark
+Run on (24 X 3597.28 MHz CPU s)
 CPU Caches:
   L1 Data 32 KiB (x12)
   L1 Instruction 32 KiB (x12)
   L2 Unified 512 KiB (x12)
   L3 Unified 16384 KiB (x4)
-Load Average: 1.56, 0.74, 0.28
+Load Average: 0.08, 0.36, 0.50
 -----------------------------------------------------
 Benchmark           Time             CPU   Iterations
 -----------------------------------------------------
-bmFileSink        368 ns          368 ns      1887624
-
-Process finished with exit code 0
+bmFileSink       80.4 ns         80.4 ns      9001090
+[ perf record: Woken up 2 times to write data ]
+[ perf record: Captured and wrote 0.312 MB perf.data (3392 samples) ]
 ```
 
 
@@ -48,5 +48,4 @@ stackcollapse-perf.pl perf.unfold &> perf.folded
 flamegraph.pl perf.folded > perf.svg
 ```
 
-CompressFileSink 使用 fmt 来格式化，写入文件加缓存之后，性能翻了十几倍。
-从火焰图上看，文件写入占 16%， fmt 格式化相关操作占了大头，加起来有 50% 左右的时间。 光是时间的格式化都占了 10%.
+在 release 模式下运行 benchmark，有时候会出现一些系统调用很占时间，但又没有调用堆栈，这时候可以使用 debug 模式来跑 benchmark， 可以看到完整的调用堆栈。

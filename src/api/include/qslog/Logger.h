@@ -11,16 +11,6 @@
 
 namespace qslog {
 
-constexpr std::string_view getBaseFilename(std::string_view path) {
-    size_t pos = path.find_last_of("/\\");
-    if (pos == std::string_view::npos) {
-        return path;
-    }
-    return path.substr(pos + 1);
-}
-
-#define QS_BASE_FILENAME (qslog::getBaseFilename(__FILE__))
-
 // 计算单个参数序列化后的大小
 template<typename T>
 static constexpr size_t getSerializedSize() {
@@ -206,7 +196,7 @@ public:
             formatEntry->logLevel_ = level;
             formatEntry->argc_ = argc;
             (parseArgType(formatEntry->argTypes_, std::forward<Args>(args)), ...);
-            formatEntry->formatStr_ = fmt::format("{} [{}:{} {}] {}", tag, file, line, function, format.str.data());
+            formatEntry->formatStr_ = fmt::format("{} [{}:{} {}] {}", tag, getBaseFilename(file), line, function, format.str.data());
             FormatIdManager::registerFormatId(formatId, formatEntry);
         }
 
@@ -231,11 +221,11 @@ private:
     static std::vector<std::shared_ptr<BaseSink>> sinks_;
 };
 
-#define QSLOG(level, tag, format, ...)                                                                   \
-    do {                                                                                                 \
-        static uint16_t qslog_formatId = UINT16_MAX;                                                     \
-        qslog::Logger::log(qslog_formatId, level, tag,                                                   \
-                           QS_BASE_FILENAME, __LINE__, __FUNCTION__, FMT_STRING(format), ##__VA_ARGS__); \
+#define QSLOG(level, tag, format, ...)                                                           \
+    do {                                                                                         \
+        static uint16_t qslog_formatId = UINT16_MAX;                                             \
+        qslog::Logger::log(qslog_formatId, level, tag,                                           \
+                           __FILE__, __LINE__, __FUNCTION__, FMT_STRING(format), ##__VA_ARGS__); \
     } while (0)
 
 #define QSLOGV(format, ...) QSLOG(qslog::LogLevel::VERBOSE, QSLOG_TAG, format, ##__VA_ARGS__)

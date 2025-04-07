@@ -41,6 +41,8 @@ char getLevelName(LogLevel level);
 
 std::string formatTimespec(uint64_t ts);
 
+std::string_view getBaseFilename(std::string_view path);
+
 size_t encodeLEB128(uint64_t value, uint8_t *output);
 
 void encodeLEB128(uint64_t value, std::vector<uint8_t> &output);
