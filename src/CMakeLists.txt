@@ -8,6 +8,7 @@ set(local_source
     api/CompressFileSink.cpp
     api/LogEntry.cpp
     api/common.cpp
+    FormatIdManager.cpp
     FileUtils.cpp
     OSUtils.cpp)
 set(local_export_header api/include)

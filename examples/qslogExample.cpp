@@ -8,6 +8,7 @@
 int main() {
     auto consoleSink = std::make_shared<qslog::StdoutSink>("console");
     auto fileSink = std::make_shared<qslog::FileSink>("FileSink", "fileSink.log", true);
+    auto binSink = std::make_shared<qslog::CompressFileSink>("CompressFileSink", "binSink.log", true);
     qslog::Logger::addSink(consoleSink);
     qslog::Logger::addSink(fileSink);
     bool b = true;
@@ -45,7 +46,7 @@ int main() {
     QSLOGI("c array test : {}", cArray);
     QSLOGI("nullptr test : {}", pInt);
     QSLOGI("normal ptr test : {}", sink);
-    QSLOGI("share ptr test : {}", fileSink.get());
+    //QSLOGI("share ptr test : {}", fileSink.get());
     qslog::Logger::sync();
     return 0;
 }

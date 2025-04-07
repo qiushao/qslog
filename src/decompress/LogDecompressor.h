@@ -4,6 +4,7 @@
 #include "qslog/LogEntry.h"
 #include "qslog/common.h"
 #include <fstream>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -39,13 +40,20 @@ private:
         return false;
     }
 
+    bool readString(std::string &str) {
+        if (std::getline(inFile_, str, '\0')) {
+            return true;
+        }
+        return false;
+    }
+
 private:
     std::ifstream inFile_;
     std::ofstream outFile_;
 
     int32_t pid_ = 0;
     uint64_t lastTs_ = 0;
-    std::unordered_map<uint16_t, std::string> formatMap_;
+    std::vector<std::shared_ptr<FormatEntry>> formatEntries_;
 };
 
 }// namespace qslog

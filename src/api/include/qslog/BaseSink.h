@@ -12,7 +12,7 @@ public:
 
     std::string_view getName();
 
-    virtual void log(const LogEntry &msg) = 0;
+    virtual void log(LogEntry &msg) = 0;
 
     virtual void sync() {}
 

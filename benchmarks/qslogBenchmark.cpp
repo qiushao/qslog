@@ -14,7 +14,7 @@ static void bmFileSink(benchmark::State &state) {
     static uint64_t count = initFileSink();
     static bool flag = false;
     for (auto _: state) {
-        QSLOGD("hello world it count = {} {}", ++count, flag);
+        QSLOGD("hello world it count = {}", ++count);
     }
 }
 BENCHMARK(bmFileSink);

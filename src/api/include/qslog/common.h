@@ -19,14 +19,22 @@ enum LogLevel {
     SILENT = 7
 };
 
-enum TypeId {
+enum EntryType {
+    INFO_ENTRY = 0,
+    FORMAT_ENTRY = 1,
+    LOG_ENTRY = 2
+};
+
+enum ArgTypeId {
     BOOL = 0,
     CHAR = 1,
     UINT8 = 2,
     UINT64 = 3,
-    FLOAT = 4,
-    DOUBLE = 5,
-    STR = 6
+    INT8 = 4,
+    INT64 = 5,
+    FLOAT = 6,
+    DOUBLE = 7,
+    STR = 8
 };
 
 char getLevelName(LogLevel level);

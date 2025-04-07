@@ -7,23 +7,29 @@
 
 namespace qslog {
 
-struct LogEntry {
-    LogLevel level_;
-    uint64_t time_;
-    int32_t tid_;
-    std::string format_;
+struct FormatEntry {
+    uint8_t entryType_;
+    uint8_t logLevel_;
     uint8_t argc_;
+    uint16_t formatId_;
+    std::vector<uint8_t> argTypes_;
+    std::string formatStr_;//format str = tag [file:line function] format
+};
+
+struct LogEntry {
+    uint16_t formatId_;
+    uint64_t time_;
+    uint32_t pid_;
+    uint32_t tid_;
     std::vector<uint8_t> argStore_;
 
-    LogEntry(LogLevel level, std::string_view format, uint8_t argc, std::vector<uint8_t> args);
+    std::string formatLogEntry();
 
-    std::string formatLogEntry() const;
+    void formatLogEntry(fmt::memory_buffer &buf);
 
-    void formatLogEntry(fmt::memory_buffer &buf) const;
+    std::string parserMsg(const std::vector<uint8_t> &buffer, const std::string &format);
 
-    static std::string parserMsg(const std::vector<uint8_t> &buffer, const std::string &format);
-
-    static bool extractArgs(const std::vector<uint8_t> &buffer, fmt::dynamic_format_arg_store<fmt::format_context> &argStore);
+    bool extractArgs(const std::vector<uint8_t> &buffer, fmt::dynamic_format_arg_store<fmt::format_context> &argStore);
 };
 
 }// namespace qslog

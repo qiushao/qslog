@@ -1,4 +1,5 @@
 #include "qslog/LogEntry.h"
+#include "FormatIdManager.h"
 #include "OSUtils.h"
 #include "fmt/args.h"
 #include <fmt/format.h>
@@ -6,25 +7,16 @@
 #include <utility>
 
 namespace qslog {
-LogEntry::LogEntry(LogLevel level, std::string_view format, uint8_t argc, std::vector<uint8_t> args)
-    : tid_(OSUtils::getTid()),
-      time_(OSUtils::realTimeNanosecond()),
-      level_(level),
-      format_(format),
-      argc_(argc),
-      argStore_(std::move(args)) {
-}
-
-void LogEntry::formatLogEntry(fmt::memory_buffer &buf) const {
-    static int32_t pid = OSUtils::getPid();
-    auto levelName = getLevelName(level_);
-    std::string msg = parserMsg(argStore_, format_);
+void LogEntry::formatLogEntry(fmt::memory_buffer &buf) {
+    auto formatEntry = FormatIdManager::getFormatEntry(formatId_);
+    auto levelName = getLevelName(static_cast<LogLevel>(formatEntry->logLevel_));
+    std::string msg = parserMsg(argStore_, formatEntry->formatStr_);
     auto timeStr = formatTimespec(time_);
-    auto formatArgs = fmt::make_format_args(timeStr, pid, tid_, levelName, msg);
+    auto formatArgs = fmt::make_format_args(timeStr, pid_, tid_, levelName, msg);
     fmt::vformat_to(fmt::appender(buf), "{} {} {} {} {}", formatArgs);
 }
 
-std::string LogEntry::formatLogEntry() const {
+std::string LogEntry::formatLogEntry() {
     fmt::memory_buffer buf;
     formatLogEntry(buf);
     return {buf.data(), buf.size()};
@@ -38,81 +30,80 @@ std::string LogEntry::parserMsg(const std::vector<uint8_t> &buffer, const std::s
     return {buf.data(), buf.size()};
 }
 
+static std::string readString(const uint8_t *buffer, size_t &pos) {
+    size_t start = pos;
+    while (buffer[pos] != '\0') {
+        ++pos;
+    }
+    return {reinterpret_cast<const char *>(buffer), pos - start};
+}
+
 bool LogEntry::extractArgs(const std::vector<uint8_t> &buffer, fmt::dynamic_format_arg_store<fmt::format_context> &argStore) {
     // 从 buffer 中解析 args 放到 argStore
     size_t pos = 0;
-    while (pos < buffer.size()) {
-        uint8_t typeId = buffer[pos++];
-        switch (typeId >> 4) {// 高 4 位为参数类型
-            case TypeId::BOOL: {
-                bool value = typeId & 0b00001111;//  低 4 位保存的 bool 值
+    auto formatEntry = FormatIdManager::getFormatEntry(formatId_);
+    for (int i = 0; i < formatEntry->argc_; ++i) {
+        uint8_t argType = formatEntry->argTypes_[i];
+        // 根据参数类型读取参数值
+        switch (argType) {
+            case ArgTypeId::BOOL: {
+                bool value = buffer[pos];
                 argStore.push_back(value);
-                pos += sizeof(bool);
+                pos += sizeof(value);
                 break;
             }
-            case TypeId::CHAR: {
-                char value = *reinterpret_cast<const char *>(&buffer[pos]);
+            case ArgTypeId::CHAR: {
+                char value = buffer[pos];
                 argStore.push_back(value);
-                pos += sizeof(char);
-                break;
+                pos += sizeof(value);
             }
-            case TypeId::UINT8: {
-                uint8_t value = *reinterpret_cast<const uint8_t *>(&buffer[pos]);
-                uint8_t flag = typeId & 0b00001000;// 第 5 位保存正负号
-                if (flag == 0) {
-                    argStore.push_back(value);
-                } else {
-                    auto sValue = (int8_t) (-value);
-                    argStore.push_back(sValue);
-                }
-                pos += sizeof(uint8_t);
-                break;
+            case ArgTypeId::UINT8: {
+                uint8_t value = buffer[pos];
+                argStore.push_back(value);
+                pos += sizeof(value);
             }
-            case TypeId::UINT64: {
+            case ArgTypeId::INT8: {
+                int value = buffer[pos];
+                argStore.push_back(value);
+                pos += sizeof(value);
+            }
+            case ArgTypeId::UINT64: {
                 size_t nRead;
                 uint64_t value = decodeLEB128(&buffer[pos], buffer.size() - pos, &nRead);
-                uint8_t flag = typeId & 0b00001000;// 第 5 位保存正负号
-                if (flag == 0) {
-                    argStore.push_back(value);
-                } else {
-                    auto sValue = (int64_t) (-value);
-                    argStore.push_back(sValue);
-                }
+                argStore.push_back(value);
                 pos += nRead;
                 break;
             }
-            case TypeId::FLOAT: {// float
+            case ArgTypeId::INT64: {
+                size_t nRead;
+                int64_t value = decodeLEB128(&buffer[pos], buffer.size() - pos, &nRead);
+                argStore.push_back(value);
+                pos += nRead;
+                break;
+            }
+            case ArgTypeId::FLOAT: {
                 float value = *reinterpret_cast<const float *>(&buffer[pos]);
                 argStore.push_back(value);
-                pos += sizeof(float);
+                pos += sizeof(value);
                 break;
             }
-            case TypeId::DOUBLE: {// double
-                double value = *reinterpret_cast<const double *>(&buffer[pos]);
+            case ArgTypeId::DOUBLE: {// double
+                double value = *reinterpret_cast<const float *>(&buffer[pos]);
                 argStore.push_back(value);
-                pos += sizeof(double);
+                pos += sizeof(value);
                 break;
             }
-            case TypeId::STR: {// string
-                size_t nRead;
-                uint64_t length = decodeLEB128(&buffer[pos], buffer.size() - pos, &nRead);
-                pos += nRead;
-
-                if (length > 0) {
-                    std::string value(reinterpret_cast<const char *>(&buffer[pos]), length);
-                    argStore.push_back(value);
-                    pos += length;
-                } else {
-                    argStore.push_back(std::string());
-                }
+            case ArgTypeId::STR: {// string
+                std::string str = readString(buffer.data(), pos);
+                argStore.push_back(str);
                 break;
             }
             default:
-                // 未知类型，跳过
-                std::cout << "Error: Unknown type in argument store" << std::endl;
+                std::cerr << "Unknown argument type: " << static_cast<int>(argType) << std::endl;
                 return false;
         }
     }
+
     return true;
 }
 

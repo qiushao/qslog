@@ -48,10 +48,10 @@ uint16 的最大值是 65535, 一般来说，一个应用的日志的点有个�
 | arg0 type id : 4 bits | rest : 4 bits | arg0 | arg1 type | arg1 | ... |
 | --------------------- | ------------- | ---- | --------- | ---- | --- |
 
-
+参数个数，参数类型，应该存储在 format entry 中， 只存一次就行，不用每个 log entry 都去记录。
 arg typeId 高4位为参数类型，定义如下：
 ```
-enum TypeId {
+enum ArgTypeId {
     BOOL = 0,
     CHAR = 1,
     UINT8 = 2,

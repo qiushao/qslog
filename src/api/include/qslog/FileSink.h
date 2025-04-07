@@ -13,7 +13,7 @@ class FileSink : public BaseSink {
 public:
     FileSink(std::string_view name, std::string_view fileName, bool truncate = false);
     virtual ~FileSink();
-    void log(const LogEntry &entry) override;
+    void log(LogEntry &entry) override;
     void sync() override;
 
 private:

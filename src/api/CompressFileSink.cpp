@@ -1,11 +1,16 @@
 #include "qslog/CompressFileSink.h"
+#include "../../FormatIdManager.h"
 #include "OSUtils.h"
 #include <sstream>
+#include <utility>
 
 namespace qslog {
 
 CompressFileSink::CompressFileSink(std::string_view name, std::string_view fileName, bool truncate)
     : BaseSink(name), fileName_(fileName) {
+    FormatIdManager::setOnNewFormatEntryCallback([this](std::shared_ptr<FormatEntry> formatEntry) {
+        writeFormatEntry(std::move(formatEntry));
+    });
     openFile(truncate);
 }
 
@@ -16,7 +21,7 @@ CompressFileSink::~CompressFileSink() {
     }
 }
 
-void CompressFileSink::log(const LogEntry &entry) {
+void CompressFileSink::log(LogEntry &entry) {
     if (!outFile_.is_open()) {
         return;
     }
@@ -31,8 +36,7 @@ void CompressFileSink::log(const LogEntry &entry) {
             writeTsInfoEntry();
         }
 
-        uint32_t formatId = getFormatId(entry);
-        writeLogEntry(entry, formatId, tsDiffMs);
+        writeLogEntry(entry, tsDiffMs);
     }
 }
 
@@ -45,19 +49,6 @@ void CompressFileSink::openFile(bool truncate) {
     }
     outFile_.open(fileName_, mode);
     writePidInfoEntry();
-}
-
-uint16_t CompressFileSink::getFormatId(const LogEntry &entry) {
-    uint16_t formatId;
-    auto it = formatIdMap_.find(entry.format_);
-    if (it != formatIdMap_.end()) {
-        formatId = it->second;
-    } else {
-        formatId = formatIdMap_.size();
-        formatIdMap_[entry.format_] = formatId;
-        writeFormatEntry(entry, formatId);
-    }
-    return formatId;
 }
 
 void CompressFileSink::sync() {
@@ -82,10 +73,10 @@ void CompressFileSink::writeBuffer(const void *data, uint32_t size) {
 }
 
 void CompressFileSink::writePidInfoEntry() {
-    printf("writePidInfoEntry\n");
+    //printf("writePidInfoEntry\n");
     // 构造 info entry 头部
     // 高2位为2(info entry类型)，接下来2位为0(pid类型)，低4位为4(uint32_t的字节数)
-    uint8_t header = (2 << 6) | (0 << 4) | 4;
+    uint8_t header = EntryType::INFO_ENTRY << 6;
     writeBuffer(&header, sizeof(header));
 
     // 写入当前进程ID
@@ -94,20 +85,20 @@ void CompressFileSink::writePidInfoEntry() {
 }
 
 void CompressFileSink::writeTsInfoEntry() {
-    printf("writeTsInfoEntry\n");
+    //printf("writeTsInfoEntry\n");
     // 构造 info entry 头部
     // 高2位为2(info entry类型)，接下来2位为1(ts类型)，低4位为8(uint64_t的字节数)
-    uint8_t header = (2 << 6) | (1 << 4) | 8;
+    uint8_t header = (EntryType::INFO_ENTRY << 6) | (1 << 4) | 8;
     writeBuffer(&header, sizeof(header));
 
     // 写入当前时间戳
     writeBuffer(&lastTs_, sizeof(lastTs_));
 }
 
-void CompressFileSink::writeLogEntry(const LogEntry &entry, uint16_t formatId, uint16_t tsDiff) {
+void CompressFileSink::writeLogEntry(const LogEntry &entry, uint16_t tsDiff) {
     // 构造 log entry 头部
-    // 高2位为0(log entry类型)，低6位为参数数量
-    uint8_t header = (0 << 6) | (entry.argc_ & 0x3F);
+    // 高2位为0(log entry类型)
+    uint8_t header = (EntryType::LOG_ENTRY << 6);
     writeBuffer(&header, sizeof(header));
 
     uint8_t encodeBuffer[16]{0};
@@ -116,7 +107,7 @@ void CompressFileSink::writeLogEntry(const LogEntry &entry, uint16_t formatId, u
     writeBuffer(encodeBuffer, encodeSize);
 
     // 写入格式ID
-    encodeSize = encodeLEB128(formatId, encodeBuffer);
+    encodeSize = encodeLEB128(entry.formatId_, encodeBuffer);
     writeBuffer(encodeBuffer, encodeSize);
 
     // 写入线程ID
@@ -129,22 +120,16 @@ void CompressFileSink::writeLogEntry(const LogEntry &entry, uint16_t formatId, u
     }
 }
 
-void CompressFileSink::writeFormatEntry(const LogEntry &entry, uint16_t formatId) {
-    printf("writeFormatEntry\n");
+void CompressFileSink::writeFormatEntry(std::shared_ptr<FormatEntry> formatEntry) {
+    //printf("writeFormatEntry\n");
     // 构造 format entry 头部
     // 高2位为1(format entry类型)，低6位为日志级别
-    uint8_t header = (1 << 6) | (static_cast<uint8_t>(entry.level_) & 0x3F);
+    uint8_t header = (EntryType::FORMAT_ENTRY << 6) | (static_cast<uint8_t>(formatEntry->logLevel_) & 0x3F);
     writeBuffer(&header, sizeof(header));
-
-    // 写入格式ID
-    writeBuffer(&formatId, sizeof(formatId));
-
-    // 计算格式字符串长度
-    auto formatLen = static_cast<uint16_t>(entry.format_.length());
-    writeBuffer(&formatLen, sizeof(formatLen));
-
-    // 写入格式字符串
-    writeBuffer(entry.format_.data(), formatLen);
+    writeBuffer(&formatEntry->argc_, sizeof(formatEntry->argc_));
+    writeBuffer(&formatEntry->formatId_, sizeof(formatEntry->formatId_));
+    writeBuffer(formatEntry->argTypes_.data(), formatEntry->argTypes_.size());
+    writeBuffer(formatEntry->formatStr_.data(), formatEntry->formatStr_.length());
 }
 
 }// namespace qslog

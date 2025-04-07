@@ -1,6 +1,8 @@
 #ifndef QSLOG_LOGGER_H
 #define QSLOG_LOGGER_H
 
+#include "../../../OSUtils.h"
+#include "../../FormatIdManager.h"
 #include "fmt/format.h"
 #include "qslog/BaseSink.h"
 #include "qslog/LogEntry.h"
@@ -9,29 +11,22 @@
 
 namespace qslog {
 
-#define QS_STRINGIFY_HELPER(x) #x
-#define QS_STRINGIFY(x) QS_STRINGIFY_HELPER(x)
-#define QS_FILE_LINE __FILE__ ":" QS_STRINGIFY(__LINE__)
-
-// Compile-time string literal parsing to extract filename
-// This is a constexpr function that can be evaluated at compile time
-constexpr std::string_view extractFilename(std::string_view path) {
+constexpr std::string_view getBaseFilename(std::string_view path) {
     size_t pos = path.find_last_of("/\\");
     if (pos == std::string_view::npos) {
-        return path;// No path separator, return the entire string
+        return path;
     }
     return path.substr(pos + 1);
 }
 
-#define QS_LOG_LOCATION (qslog::extractFilename(QS_FILE_LINE))
+#define QS_BASE_FILENAME (qslog::getBaseFilename(__FILE__))
 
 // 计算单个参数序列化后的大小
 template<typename T>
 static constexpr size_t getSerializedSize() {
     using CleanType = std::remove_reference_t<T>;
 
-    // 类型ID占用1字节
-    size_t size = 1;
+    size_t size = 0;
 
     // 字符串类型 - 这里只能计算固定部分，字符串内容长度是运行时才知道的
     if constexpr (std::is_same_v<CleanType, std::string> ||
@@ -59,8 +54,6 @@ static constexpr size_t getMinSerializedSize() {
     }
 }
 
-typedef std::function<void(const LogEntry &entry)> LogHandler;
-
 // 用于static_assert的辅助模板，始终返回false
 template<typename T>
 struct always_false : std::false_type {
@@ -74,90 +67,33 @@ template<typename T>
 static void serializeArg(std::vector<uint8_t> &buffer, T &&arg) {
     using CleanType = std::remove_reference_t<T>;
 
-    // 确定类型ID (高4位保存数据类型)
-    uint8_t typeId;
-
-    if constexpr (std::is_same_v<CleanType, bool>) {
-        // 布尔类型 - 直接将值存储在typeId的低4位
-        typeId = (TypeId::BOOL << 4) | (arg ? 1 : 0);// 高4位为0表示bool类型，低4位存储值
-        buffer.push_back(typeId);
-    } else if constexpr (std::is_same_v<CleanType, char>) {
-        // char 直接存储，不使用编码
-        typeId = TypeId::CHAR << 4;
-        buffer.push_back(typeId);
-        buffer.push_back(static_cast<uint8_t>(arg));
-    } else if constexpr (std::is_same_v<CleanType, uint8_t>) {
-        // uint8 直接存储，不使用编码
-        typeId = TypeId::UINT8 << 4;
-        buffer.push_back(typeId);
-        buffer.push_back(static_cast<uint8_t>(arg));
-    } else if constexpr (std::is_same_v<CleanType, int8_t>) {
-        // int8 正数直接转换成 uint8，负数先取反，把正负号位保存在 typeId 第 5 位， 为1 表示负数
-        typeId = TypeId::UINT8 << 4;
-        uint8_t value = arg;
-        if (arg < 0) {
-            int16_t tmp = arg;
-            value = -tmp;
-            typeId |= 1 << 3;
-        }
-        buffer.push_back(typeId);
-        buffer.push_back(static_cast<uint8_t>(value));
+    if constexpr (std::is_same_v<CleanType, bool> || std::is_same_v<CleanType, char> || std::is_same_v<CleanType, uint8_t> || std::is_same_v<CleanType, int8_t> || std::is_floating_point_v<CleanType>) {
+        buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(&arg),
+                      reinterpret_cast<const uint8_t *>(&arg) + sizeof(CleanType));
     } else if constexpr (std::is_unsigned_v<CleanType> && std::is_integral_v<CleanType>) {
         // 无符号整型 uint16, 32, 64, 统一按 uint64 位处理
-        typeId = TypeId::UINT64 << 4;// uint64_t
-        buffer.push_back(typeId);
-        // 使用LEB128编码
         auto value = static_cast<uint64_t>(arg);
         encodeLEB128(value, buffer);
     } else if constexpr (std::is_signed_v<CleanType> && std::is_integral_v<CleanType>) {
-        // 有符号整型int16, 32, 64, 统一按 uint64 位处理
-        typeId = TypeId::UINT64 << 4;// uint64_t
-        uint64_t value = arg;
-        if (arg < 0) {
-            // INT32_MIN 需要特殊处理，先提升为 int64_t， 再取反，否则会越界
-            int64_t tmp = arg;
-            value = -tmp;
-            typeId |= 1 << 3;
-        }
-        buffer.push_back(typeId);
+        // 有符号整型int16, 32, 64, 统一按 int64 位处理
+        auto value = static_cast<int64_t>(arg);
         encodeLEB128(value, buffer);
-    } else if constexpr (std::is_floating_point_v<CleanType>) {
-        // 浮点类型
-        if constexpr (sizeof(CleanType) == 4) {
-            typeId = TypeId::FLOAT << 4;// float
-        } else if constexpr (sizeof(CleanType) == 8) {
-            typeId = TypeId::DOUBLE << 4;// double
-        }
-        buffer.push_back(typeId);
-        buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(&arg),
-                      reinterpret_cast<const uint8_t *>(&arg) + sizeof(CleanType));
     }
     // 字符串类型
     else if constexpr (std::is_same_v<CleanType, std::string> ||
                        std::is_same_v<CleanType, std::string_view>) {
-        typeId = TypeId::STR << 4;
-        buffer.push_back(typeId);
-        // 字符串长度
         uint32_t length = arg.length();
-        encodeLEB128(length, buffer);
-        // 字符串内容
         buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(arg.data()),
                       reinterpret_cast<const uint8_t *>(arg.data()) + length);
     }
     // C风格字符串 (const char* 和 char*)
     else if constexpr (std::is_pointer_v<CleanType> &&
                        (std::is_same_v<std::remove_const_t<std::remove_pointer_t<CleanType>>, char>) ) {
-        typeId = TypeId::STR << 4;
-        buffer.push_back(typeId);
-
         if (arg == nullptr) {
             // 空字符串，长度为0
             buffer.push_back(0);// LEB128 for 0
         } else {
-            // 字符串长度
             uint32_t length = std::strlen(arg);
-            encodeLEB128(length, buffer);
-            // 字符串内容
             buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(arg),
                           reinterpret_cast<const uint8_t *>(arg) + length);
         }
@@ -165,20 +101,13 @@ static void serializeArg(std::vector<uint8_t> &buffer, T &&arg) {
     // 字符数组（字符串字面量 "hello"）
     else if constexpr (std::is_array_v<CleanType> &&
                        std::is_same_v<std::remove_const_t<std::remove_extent_t<CleanType>>, char>) {
-        typeId = TypeId::STR << 4;
-        buffer.push_back(typeId);
-        // 字符串长度
         uint32_t length = std::strlen(arg);
-        encodeLEB128(length, buffer);
-        // 字符串内容
         buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(arg),
                       reinterpret_cast<const uint8_t *>(arg) + length);
     }
     // 普通指针类型 (除了已处理的 char*)
     else if constexpr (std::is_pointer_v<CleanType> &&
                        !std::is_same_v<std::remove_const_t<std::remove_pointer_t<CleanType>>, char>) {
-        typeId = TypeId::UINT64 << 4;// 与 uint64_t 相同
-        buffer.push_back(typeId);
         auto value = reinterpret_cast<uint64_t>(arg);
         encodeLEB128(value, buffer);
     }
@@ -189,67 +118,132 @@ static void serializeArg(std::vector<uint8_t> &buffer, T &&arg) {
     }
 }
 
+template<typename T>
+void parseArgType(std::vector<uint8_t> &buffer, T &&arg) {
+    using CleanType = std::remove_reference_t<T>;
+    uint8_t typeId;
+
+    if constexpr (std::is_same_v<CleanType, bool>) {
+        typeId = ArgTypeId::BOOL;
+        buffer.push_back(typeId);
+    } else if constexpr (std::is_same_v<CleanType, char>) {
+        typeId = ArgTypeId::CHAR;
+        buffer.push_back(typeId);
+    } else if constexpr (std::is_same_v<CleanType, uint8_t>) {
+        typeId = ArgTypeId::UINT8;
+        buffer.push_back(typeId);
+    } else if constexpr (std::is_same_v<CleanType, int8_t>) {
+        typeId = ArgTypeId::INT8;
+        buffer.push_back(typeId);
+    } else if constexpr (std::is_unsigned_v<CleanType> && std::is_integral_v<CleanType>) {
+        // 无符号整型 uint16, 32, 64, 统一按 uint64 位处理
+        typeId = ArgTypeId::UINT64;
+        buffer.push_back(typeId);
+    } else if constexpr (std::is_signed_v<CleanType> && std::is_integral_v<CleanType>) {
+        // 有符号整型int16, 32, 64, 统一按 int64 位处理
+        typeId = ArgTypeId::INT64;
+        buffer.push_back(typeId);
+    } else if constexpr (std::is_floating_point_v<CleanType>) {
+        // 浮点类型
+        if constexpr (sizeof(CleanType) == 4) {
+            typeId = ArgTypeId::FLOAT;
+        } else if constexpr (sizeof(CleanType) == 8) {
+            typeId = ArgTypeId::DOUBLE;
+        }
+        buffer.push_back(typeId);
+    }
+    // 字符串类型
+    else if constexpr (std::is_same_v<CleanType, std::string> ||
+                       std::is_same_v<CleanType, std::string_view>) {
+        typeId = ArgTypeId::STR;
+        buffer.push_back(typeId);
+    }
+    // C风格字符串 (const char* 和 char*)
+    else if constexpr (std::is_pointer_v<CleanType> &&
+                       (std::is_same_v<std::remove_const_t<std::remove_pointer_t<CleanType>>, char>) ) {
+        typeId = ArgTypeId::STR;
+        buffer.push_back(typeId);
+    }
+    // 字符数组（字符串字面量 "hello"）
+    else if constexpr (std::is_array_v<CleanType> &&
+                       std::is_same_v<std::remove_const_t<std::remove_extent_t<CleanType>>, char>) {
+        typeId = ArgTypeId::STR;
+        buffer.push_back(typeId);
+    }
+    // 普通指针类型 (除了已处理的 char*)
+    else if constexpr (std::is_pointer_v<CleanType> &&
+                       !std::is_same_v<std::remove_const_t<std::remove_pointer_t<CleanType>>, char>) {
+        typeId = ArgTypeId::UINT64;// 与 uint64_t 相同
+        buffer.push_back(typeId);
+    }
+}
+
 class Logger {
 public:
     static void setLogLevel(LogLevel level);
 
     static LogLevel getLogLevel();
 
-    static void setLogHandler(LogHandler handler);
-
     static void addSink(std::shared_ptr<BaseSink> sink);
 
     static void sync();
 
     template<typename... Args>
-    static void log(std::string_view sourceLocation, std::string_view function,
-                    LogLevel level, std::string_view tag, fmt::format_string<Args...> format, Args &&...args) {
+    static void log(uint16_t &formatId, LogLevel level, std::string_view tag,
+                    std::string_view file, uint16_t line, std::string_view function,
+                    fmt::format_string<Args...> format, Args &&...args) {
         if (level < logLevel_) {
             return;
         }
 
-        fmt::memory_buffer buf;
-        auto formatArgs = fmt::make_format_args(tag, sourceLocation, function, format.str);
-        fmt::vformat_to(fmt::appender(buf), "{} [{} {}] {}", formatArgs);
-        std::string_view formatStr{buf.data(), buf.size()};
-
-        std::vector<uint8_t> argStore;
         constexpr uint8_t argc = sizeof...(args);
-        if constexpr (argc > 0) {
-            // 计算参数序列化后的最小大小
-            constexpr size_t minSize = getMinSerializedSize<Args...>();
-            argStore.reserve(minSize);
-            // 使用折叠表达式序列化参数
-            (serializeArg(argStore, std::forward<Args>(args)), ...);
+        static uint32_t pid = OSUtils::getPid();
+        static thread_local uint32_t tid = OSUtils::getTid();
+
+        if (formatId == UINT16_MAX) {
+            auto formatEntry = std::make_shared<FormatEntry>();
+            formatEntry->entryType_ = EntryType::FORMAT_ENTRY;
+            formatEntry->logLevel_ = level;
+            formatEntry->argc_ = argc;
+            (parseArgType(formatEntry->argTypes_, std::forward<Args>(args)), ...);
+            formatEntry->formatStr_ = fmt::format("{} [{}:{} {}] {}", tag, file, line, function, format.str.data());
+            FormatIdManager::registerFormatId(formatId, formatEntry);
         }
 
-        LogEntry entry(level, formatStr, argc, argStore);
-
-        if (logHandler_) {
-            logHandler_(entry);
-            return;
+        LogEntry logEntry;
+        logEntry.formatId_ = formatId;
+        logEntry.time_ = OSUtils::realTimeNanosecond();
+        logEntry.pid_ = pid;
+        logEntry.tid_ = tid;
+        if constexpr (argc > 0) {
+            constexpr size_t minSize = getMinSerializedSize<Args...>();
+            logEntry.argStore_.reserve(minSize);
+            (serializeArg(logEntry.argStore_, std::forward<Args>(args)), ...);
         }
 
         for (auto &sink: sinks_) {
-            sink->log(entry);
+            sink->log(logEntry);
         }
     }
 
 private:
     static LogLevel logLevel_;
-    static LogHandler logHandler_;
     static std::vector<std::shared_ptr<BaseSink>> sinks_;
 };
 
-#define QSLOG(level, tag, format, ...) \
-    qslog::Logger::log(QS_LOG_LOCATION, __FUNCTION__, level, tag, FMT_STRING(format), ##__VA_ARGS__)
+#define QSLOG(level, tag, format, ...)                                                                   \
+    do {                                                                                                 \
+        static uint16_t qslog_formatId = UINT16_MAX;                                                     \
+        qslog::Logger::log(qslog_formatId, level, tag,                                                   \
+                           QS_BASE_FILENAME, __LINE__, __FUNCTION__, FMT_STRING(format), ##__VA_ARGS__); \
+    } while (0)
 
-#define QSLOGV(format, ...) (QSLOG(qslog::LogLevel::VERBOSE, QSLOG_TAG, format, ##__VA_ARGS__))
-#define QSLOGD(format, ...) (QSLOG(qslog::LogLevel::DEBUG, QSLOG_TAG, format, ##__VA_ARGS__))
-#define QSLOGI(format, ...) (QSLOG(qslog::LogLevel::INFO, QSLOG_TAG, format, ##__VA_ARGS__))
-#define QSLOGW(format, ...) (QSLOG(qslog::LogLevel::WARN, QSLOG_TAG, format, ##__VA_ARGS__))
-#define QSLOGE(format, ...) (QSLOG(qslog::LogLevel::ERROR, QSLOG_TAG, format, ##__VA_ARGS__))
-#define QSLOGF(format, ...) (QSLOG(qslog::LogLevel::FATAL, QSLOG_TAG, format, ##__VA_ARGS__))
+#define QSLOGV(format, ...) QSLOG(qslog::LogLevel::VERBOSE, QSLOG_TAG, format, ##__VA_ARGS__)
+#define QSLOGD(format, ...) QSLOG(qslog::LogLevel::DEBUG, QSLOG_TAG, format, ##__VA_ARGS__)
+#define QSLOGI(format, ...) QSLOG(qslog::LogLevel::INFO, QSLOG_TAG, format, ##__VA_ARGS__)
+#define QSLOGW(format, ...) QSLOG(qslog::LogLevel::WARN, QSLOG_TAG, format, ##__VA_ARGS__)
+#define QSLOGE(format, ...) QSLOG(qslog::LogLevel::ERROR, QSLOG_TAG, format, ##__VA_ARGS__)
+#define QSLOGF(format, ...) QSLOG(qslog::LogLevel::FATAL, QSLOG_TAG, format, ##__VA_ARGS__)
 }// namespace qslog
 
 #endif//QSLOG_LOGGER_H

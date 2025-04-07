@@ -19,7 +19,7 @@ FileSink::~FileSink() {
     }
 }
 
-void FileSink::log(const LogEntry &entry) {
+void FileSink::log(LogEntry &entry) {
     if (!outFile_.is_open()) {
         return;
     }
