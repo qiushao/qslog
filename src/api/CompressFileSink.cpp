@@ -96,6 +96,7 @@ void CompressFileSink::writeTsInfoEntry() {
 }
 
 void CompressFileSink::writeLogEntry(const LogEntry &entry, uint16_t tsDiff) {
+    //printf("writeLogEntry\n");
     // 构造 log entry 头部
     // 高2位为0(log entry类型)
     uint8_t header = (EntryType::LOG_ENTRY << 6);
@@ -129,7 +130,7 @@ void CompressFileSink::writeFormatEntry(std::shared_ptr<FormatEntry> formatEntry
     writeBuffer(&formatEntry->argc_, sizeof(formatEntry->argc_));
     writeBuffer(&formatEntry->formatId_, sizeof(formatEntry->formatId_));
     writeBuffer(formatEntry->argTypes_.data(), formatEntry->argTypes_.size());
-    writeBuffer(formatEntry->formatStr_.data(), formatEntry->formatStr_.length());
+    writeBuffer(formatEntry->formatStr_.data(), formatEntry->formatStr_.length() + 1);
 }
 
 }// namespace qslog

@@ -82,7 +82,7 @@ static void serializeArg(std::vector<uint8_t> &buffer, T &&arg) {
     // 字符串类型
     else if constexpr (std::is_same_v<CleanType, std::string> ||
                        std::is_same_v<CleanType, std::string_view>) {
-        uint32_t length = arg.length();
+        uint32_t length = arg.length() + 1;//str.length 不包含结尾的 '\0'
         buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(arg.data()),
                       reinterpret_cast<const uint8_t *>(arg.data()) + length);
     }
@@ -91,9 +91,9 @@ static void serializeArg(std::vector<uint8_t> &buffer, T &&arg) {
                        (std::is_same_v<std::remove_const_t<std::remove_pointer_t<CleanType>>, char>) ) {
         if (arg == nullptr) {
             // 空字符串，长度为0
-            buffer.push_back(0);// LEB128 for 0
+            buffer.push_back('\0');
         } else {
-            uint32_t length = std::strlen(arg);
+            uint32_t length = std::strlen(arg) + 1;//strlen 不包含结尾的 '\0'
             buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(arg),
                           reinterpret_cast<const uint8_t *>(arg) + length);
         }
@@ -101,7 +101,7 @@ static void serializeArg(std::vector<uint8_t> &buffer, T &&arg) {
     // 字符数组（字符串字面量 "hello"）
     else if constexpr (std::is_array_v<CleanType> &&
                        std::is_same_v<std::remove_const_t<std::remove_extent_t<CleanType>>, char>) {
-        uint32_t length = std::strlen(arg);
+        uint32_t length = std::strlen(arg) + 1;//strlen 不包含结尾的 '\0'
         buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(arg),
                       reinterpret_cast<const uint8_t *>(arg) + length);
     }

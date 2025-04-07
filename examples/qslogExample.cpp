@@ -11,6 +11,7 @@ int main() {
     auto binSink = std::make_shared<qslog::CompressFileSink>("CompressFileSink", "binSink.log", true);
     qslog::Logger::addSink(consoleSink);
     qslog::Logger::addSink(fileSink);
+    qslog::Logger::addSink(binSink);
     bool b = true;
     char c = 'c';
     uint8_t u8 = 255;
