@@ -1,9 +1,9 @@
 #ifndef QSLOG_LOGGER_H
 #define QSLOG_LOGGER_H
 
-#include "FormatIdManager.h"
 #include "fmt/format.h"
 #include "qslog/BaseSink.h"
+#include "qslog/FormatIdManager.h"
 #include "qslog/LogEntry.h"
 #include "qslog/OSUtils.h"
 #include "qslog/common.h"
@@ -182,32 +182,30 @@ public:
     static void sync();
 
     template<typename... Args>
-    static void log(uint16_t &formatId, LogLevel level, std::string_view tag,
-                    std::string_view file, uint16_t line, std::string_view function,
+    static void log(uint16_t &formatId, LogLevel level, const char *tag,
+                    const char *file, uint16_t line, const char *function,
                     fmt::format_string<Args...> format, Args &&...args) {
         if (level < logLevel_) {
             return;
         }
 
         constexpr uint8_t argc = sizeof...(args);
-        static uint32_t pid = OSUtils::getPid();
         static thread_local uint32_t tid = OSUtils::getTid();
 
         if (formatId == UINT16_MAX) {
             auto formatEntry = std::make_shared<FormatEntry>();
-            formatEntry->entryType_ = EntryType::FORMAT_ENTRY;
             formatEntry->logLevel_ = level;
             formatEntry->argc_ = argc;
             (parseArgType(formatEntry->argTypes_, std::forward<Args>(args)), ...);
             formatEntry->formatStr_ = fmt::format("{} [{}:{} {}] {}", tag, getBaseFilename(file), line, function, format.str.data());
             FormatIdManager::registerFormatId(formatId, formatEntry);
         }
+        LogEntry logEntry{
+                .formatId_ = formatId,
+                .time_ = tscns_.rdns(),
+                .tid_ = tid,
+        };
 
-        LogEntry logEntry;
-        logEntry.formatId_ = formatId;
-        logEntry.time_ = tscns_.rdns();
-        logEntry.pid_ = pid;
-        logEntry.tid_ = tid;
         if constexpr (argc > 0) {
             constexpr size_t minSize = getMinSerializedSize<Args...>();
             logEntry.argStore_.reserve(minSize);

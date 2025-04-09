@@ -8,7 +8,6 @@
 namespace qslog {
 
 struct FormatEntry {
-    uint8_t entryType_;
     uint8_t logLevel_;
     uint8_t argc_;
     uint16_t formatId_;
@@ -19,7 +18,6 @@ struct FormatEntry {
 struct LogEntry {
     uint16_t formatId_;
     uint64_t time_;
-    uint32_t pid_;
     uint32_t tid_;
     std::vector<uint8_t> argStore_;
 

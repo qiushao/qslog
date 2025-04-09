@@ -8,11 +8,12 @@
 
 namespace qslog {
 void LogEntry::formatLogEntry(fmt::memory_buffer &buf) {
+    static uint32_t pid = OSUtils::getPid();
     auto formatEntry = FormatIdManager::getFormatEntry(formatId_);
     auto levelName = getLevelName(static_cast<LogLevel>(formatEntry->logLevel_));
     std::string msg = parserMsg(argStore_, formatEntry->formatStr_);
     auto timeStr = formatTimespec(time_);
-    auto formatArgs = fmt::make_format_args(timeStr, pid_, tid_, levelName, msg);
+    auto formatArgs = fmt::make_format_args(timeStr, pid, tid_, levelName, msg);
     fmt::vformat_to(fmt::appender(buf), "{} {} {} {} {}", formatArgs);
 }
 

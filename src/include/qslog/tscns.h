@@ -80,7 +80,7 @@ public:
         }
     }
 
-    inline int64_t rdns() const { return tsc2ns(rdtsc()); }
+    inline uint64_t rdns() const { return tsc2ns(rdtsc()); }
 
     static inline int64_t rdsysns() {
         using namespace std::chrono;
