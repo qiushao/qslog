@@ -1,12 +1,13 @@
 #ifndef QSLOG_LOGGER_H
 #define QSLOG_LOGGER_H
 
-#include "OSUtils.h"
 #include "FormatIdManager.h"
 #include "fmt/format.h"
 #include "qslog/BaseSink.h"
 #include "qslog/LogEntry.h"
+#include "qslog/OSUtils.h"
 #include "qslog/common.h"
+#include "qslog/tscns.h"
 #include <memory>
 
 namespace qslog {
@@ -170,6 +171,8 @@ void parseArgType(std::vector<uint8_t> &buffer, T &&arg) {
 
 class Logger {
 public:
+    static void init();
+
     static void setLogLevel(LogLevel level);
 
     static LogLevel getLogLevel();
@@ -202,7 +205,7 @@ public:
 
         LogEntry logEntry;
         logEntry.formatId_ = formatId;
-        logEntry.time_ = OSUtils::realTimeNanosecond();
+        logEntry.time_ = tscns_.rdns();
         logEntry.pid_ = pid;
         logEntry.tid_ = tid;
         if constexpr (argc > 0) {
@@ -219,6 +222,7 @@ public:
 private:
     static LogLevel logLevel_;
     static std::vector<std::shared_ptr<BaseSink>> sinks_;
+    static TSCNS tscns_;
 };
 
 #define QSLOG(level, tag, format, ...)                                                           \

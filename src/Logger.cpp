@@ -5,6 +5,7 @@ namespace qslog {
 
 LogLevel Logger::logLevel_ = LogLevel::DEBUG;
 std::vector<std::shared_ptr<BaseSink>> Logger::sinks_;
+TSCNS Logger::tscns_;
 
 void Logger::setLogLevel(LogLevel level) {
     logLevel_ = level;
@@ -22,6 +23,9 @@ void Logger::sync() {
     for (auto &sink: sinks_) {
         sink->sync();
     }
+}
+void Logger::init() {
+    tscns_.init();
 }
 
 }// namespace qslog

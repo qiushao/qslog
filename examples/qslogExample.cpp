@@ -6,6 +6,7 @@
 #include "qslog/StdoutSink.h"
 
 int main() {
+    qslog::Logger::init();
     auto consoleSink = std::make_shared<qslog::StdoutSink>("console");
     auto fileSink = std::make_shared<qslog::FileSink>("FileSink", "fileSink.log", true);
     auto binSink = std::make_shared<qslog::CompressFileSink>("CompressFileSink", "binSink.log", true);
