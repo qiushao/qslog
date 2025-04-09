@@ -1,6 +1,6 @@
 #include "qslog/LogEntry.h"
-#include "FormatIdManager.h"
-#include "OSUtils.h"
+#include "qslog/FormatIdManager.h"
+#include "qslog/OSUtils.h"
 #include "fmt/args.h"
 #include <fmt/format.h>
 #include <iostream>

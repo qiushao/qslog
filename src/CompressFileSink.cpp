@@ -1,6 +1,6 @@
 #include "qslog/CompressFileSink.h"
-#include "../../FormatIdManager.h"
-#include "OSUtils.h"
+#include "qslog/FormatIdManager.h"
+#include "qslog/OSUtils.h"
 #include <sstream>
 #include <utility>
 

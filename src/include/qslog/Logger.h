@@ -1,8 +1,8 @@
 #ifndef QSLOG_LOGGER_H
 #define QSLOG_LOGGER_H
 
-#include "../../../OSUtils.h"
-#include "../../FormatIdManager.h"
+#include "OSUtils.h"
+#include "FormatIdManager.h"
 #include "fmt/format.h"
 #include "qslog/BaseSink.h"
 #include "qslog/LogEntry.h"

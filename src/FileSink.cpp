@@ -1,8 +1,4 @@
 #include "qslog/FileSink.h"
-#include "OSUtils.h"
-#include <fmt/chrono.h>
-#include <fmt/format.h>
-#include <iomanip>
 #include <sstream>
 
 namespace qslog {
