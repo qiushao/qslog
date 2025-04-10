@@ -16,18 +16,19 @@ struct FormatEntry {
 };
 
 struct LogEntry {
-    uint16_t formatId_;
-    uint64_t time_;
-    uint32_t tid_;
-    std::vector<uint8_t> argStore_;
+    uint16_t formatId_ = 0;
+    uint64_t time_ = 0;
+    uint32_t tid_ = 0;
+    size_t argsSize_ = 0;
+    uint8_t *argStore_ = nullptr;
 
     std::string formatLogEntry();
 
     void formatLogEntry(fmt::memory_buffer &buf);
 
-    std::string parserMsg(const std::vector<uint8_t> &buffer, const std::string &format);
+    std::string parserMsg(const std::string &format);
 
-    bool extractArgs(const std::vector<uint8_t> &buffer, fmt::dynamic_format_arg_store<fmt::format_context> &argStore);
+    bool extractArgs(fmt::dynamic_format_arg_store<fmt::format_context> &argStore);
 };
 
 }// namespace qslog

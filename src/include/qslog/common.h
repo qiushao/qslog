@@ -63,17 +63,6 @@ inline size_t encodeLEB128(uint64_t value, uint8_t *output) {
     return size;
 }
 
-inline void encodeLEB128(uint64_t value, std::vector<uint8_t> &output) {
-    do {
-        uint8_t byte = value & 0x7F;
-        value >>= 7;
-        if (value != 0) {
-            byte |= 0x80;// 设置延续位
-        }
-        output.push_back(byte);
-    } while (value != 0);
-}
-
 uint64_t decodeLEB128(const uint8_t *input, size_t size, size_t *bytesRead);
 
 uint64_t decodeLEB128(std::ifstream &inFile);

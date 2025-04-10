@@ -116,8 +116,8 @@ void CompressFileSink::writeLogEntry(const LogEntry &entry, uint16_t tsDiff) {
     writeBuffer(encodeBuffer, encodeSize);
 
     // 写入参数数据
-    if (!entry.argStore_.empty()) {
-        writeBuffer(entry.argStore_.data(), entry.argStore_.size());
+    if (entry.argsSize_) {
+        writeBuffer(entry.argStore_, entry.argsSize_);
     }
 }
 

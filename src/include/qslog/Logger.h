@@ -55,52 +55,55 @@ struct always_false : std::false_type {
 };
 
 template<typename T>
-static void serializeArg(std::vector<uint8_t> &buffer, T &&arg) {
+static void serializeArg(LogEntry &entry, T &&arg) {
     using CleanType = std::remove_reference_t<T>;
 
     if constexpr (std::is_same_v<CleanType, bool> || std::is_same_v<CleanType, char> || std::is_same_v<CleanType, uint8_t> || std::is_same_v<CleanType, int8_t> || std::is_floating_point_v<CleanType>) {
-        buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(&arg),
-                      reinterpret_cast<const uint8_t *>(&arg) + sizeof(CleanType));
+        memcpy(entry.argStore_ + entry.argsSize_, &arg, sizeof(arg));
     } else if constexpr (std::is_unsigned_v<CleanType> && std::is_integral_v<CleanType>) {
         // 无符号整型 uint16, 32, 64, 统一按 uint64 位处理
         auto value = static_cast<uint64_t>(arg);
-        encodeLEB128(value, buffer);
+        auto ret = encodeLEB128(value, entry.argStore_);
+        entry.argsSize_ += ret;
     } else if constexpr (std::is_signed_v<CleanType> && std::is_integral_v<CleanType>) {
         // 有符号整型int16, 32, 64, 统一按 int64 位处理
         auto value = static_cast<int64_t>(arg);
-        encodeLEB128(value, buffer);
+        auto ret = encodeLEB128(value, entry.argStore_);
+        entry.argsSize_ += ret;
     }
     // 字符串类型
     else if constexpr (std::is_same_v<CleanType, std::string> ||
                        std::is_same_v<CleanType, std::string_view>) {
         uint32_t length = arg.length() + 1;//str.length 不包含结尾的 '\0'
-        buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(arg.data()),
-                      reinterpret_cast<const uint8_t *>(arg.data()) + length);
+        memcpy(entry.argStore_ + entry.argsSize_, arg.data(), length);
+        entry.argsSize_ += length;
     }
     // C风格字符串 (const char* 和 char*)
     else if constexpr (std::is_pointer_v<CleanType> &&
                        (std::is_same_v<std::remove_const_t<std::remove_pointer_t<CleanType>>, char>) ) {
         if (arg == nullptr) {
             // 空字符串，长度为0
-            buffer.push_back('\0');
+            memcpy(entry.argStore_ + entry.argsSize_, "\0", 1);
+            ++entry.argsSize_;
         } else {
             uint32_t length = std::strlen(arg) + 1;//strlen 不包含结尾的 '\0'
-            buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(arg),
-                          reinterpret_cast<const uint8_t *>(arg) + length);
+            memcpy(entry.argStore_ + entry.argsSize_, arg, length);
+            entry.argsSize_ += length;
         }
     }
     // 字符数组（字符串字面量 "hello"）
     else if constexpr (std::is_array_v<CleanType> &&
                        std::is_same_v<std::remove_const_t<std::remove_extent_t<CleanType>>, char>) {
         uint32_t length = std::strlen(arg) + 1;//strlen 不包含结尾的 '\0'
-        buffer.insert(buffer.end(), reinterpret_cast<const uint8_t *>(arg),
-                      reinterpret_cast<const uint8_t *>(arg) + length);
+        memcpy(entry.argStore_ + entry.argsSize_, arg, length);
+        entry.argsSize_ += length;
     }
     // 普通指针类型 (除了已处理的 char*)
     else if constexpr (std::is_pointer_v<CleanType> &&
                        !std::is_same_v<std::remove_const_t<std::remove_pointer_t<CleanType>>, char>) {
         auto value = reinterpret_cast<uint64_t>(arg);
-        encodeLEB128(value, buffer);
+        auto ret = encodeLEB128(value, entry.argStore_);
+        entry.argsSize_ += ret;
     }
     // un support type
     else {
@@ -200,16 +203,16 @@ public:
             formatEntry->formatStr_ = fmt::format("{} [{}:{} {}] {}", tag, getBaseFilename(file), line, function, format.str.data());
             FormatIdManager::registerFormatId(formatId, formatEntry);
         }
+        static thread_local uint8_t argsBuffer[2048];
         LogEntry logEntry{
                 .formatId_ = formatId,
                 .time_ = tscns_.rdns(),
                 .tid_ = tid,
-        };
+                .argsSize_ = 0,
+                .argStore_ = argsBuffer};
 
         if constexpr (argc > 0) {
-            constexpr size_t minSize = getMinSerializedSize<Args...>();
-            logEntry.argStore_.reserve(minSize);
-            (serializeArg(logEntry.argStore_, std::forward<Args>(args)), ...);
+            (serializeArg(logEntry, std::forward<Args>(args)), ...);
         }
 
         for (auto &sink: sinks_) {
