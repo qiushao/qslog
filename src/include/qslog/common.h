@@ -43,9 +43,36 @@ std::string formatTimespec(uint64_t ts);
 
 std::string_view getBaseFilename(std::string_view path);
 
-size_t encodeLEB128(uint64_t value, uint8_t *output);
+/**
+ * 将无符号整数编码为LEB128格式
+ *
+ * @param value 要编码的无符号整数
+ * @param output 输出缓冲区，必须预先分配足够空间
+ * @return 编码后的字节数
+ */
+inline size_t encodeLEB128(uint64_t value, uint8_t *output) {
+    size_t size = 0;
+    do {
+        uint8_t byte = value & 0x7F;
+        value >>= 7;
+        if (value != 0) {
+            byte |= 0x80;// 设置延续位
+        }
+        output[size++] = byte;
+    } while (value != 0);
+    return size;
+}
 
-void encodeLEB128(uint64_t value, std::vector<uint8_t> &output);
+inline void encodeLEB128(uint64_t value, std::vector<uint8_t> &output) {
+    do {
+        uint8_t byte = value & 0x7F;
+        value >>= 7;
+        if (value != 0) {
+            byte |= 0x80;// 设置延续位
+        }
+        output.push_back(byte);
+    } while (value != 0);
+}
 
 uint64_t decodeLEB128(const uint8_t *input, size_t size, size_t *bytesRead);
 
