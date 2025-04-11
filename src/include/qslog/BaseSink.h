@@ -12,7 +12,13 @@ public:
 
     std::string_view getName();
 
-    virtual void log(LogEntry &msg) = 0;
+    // 二进制压缩数据
+    virtual void log(LogEntry &msg) {}
+
+    // 直接输出，stdout sink, android logcat sink
+    virtual void log(LogLevel level, const char *tag, const char *file, uint16_t line, const char *function, const char *msg) {}
+
+    virtual bool isBinarySink() {return true;}
 
     virtual void sync() {}
 
