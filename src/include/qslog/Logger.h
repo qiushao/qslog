@@ -228,8 +228,8 @@ private:
 
 #define QSLOG(level, tag, format, ...)                                                           \
     do {                                                                                         \
-        static uint16_t qslog_formatId = UINT16_MAX;                                             \
-        qslog::Logger::log(qslog_formatId, level, tag,                                           \
+        static uint16_t qslogFormatId = UINT16_MAX;                                              \
+        qslog::Logger::log(qslogFormatId, level, tag,                                            \
                            __FILE__, __LINE__, __FUNCTION__, FMT_STRING(format), ##__VA_ARGS__); \
     } while (0)
 
