@@ -12,36 +12,60 @@
 
 namespace qslog {
 
-// 计算单个参数序列化后的大小
-template<typename T>
-static constexpr size_t getSerializedSize() {
-    using CleanType = std::remove_reference_t<T>;
-
-    size_t size = 0;
-
-    // 字符串类型 - 这里只能计算固定部分，字符串内容长度是运行时才知道的
-    if constexpr (std::is_same_v<CleanType, std::string> ||
-                  std::is_same_v<CleanType, std::string_view>) {
-        // 注意：字符串内容的长度在运行时才能确定
-    }
-    // C风格字符串
-    else if constexpr (std::is_pointer_v<CleanType> &&
-                       (std::is_same_v<std::remove_const_t<std::remove_pointer_t<CleanType>>, char>) ) {
-        // 注意：字符串内容的长度在运行时才能确定
-    } else {
-        size += sizeof(CleanType);
-    }
-
-    return size;
+template<typename Arg>
+static inline constexpr bool isCstring() {
+    return fmt::detail::mapped_type_constant<Arg, char>::value == fmt::detail::type::cstring_type;
 }
 
-// 计算所有参数序列化后的最小大小（不包括字符串内容）
-template<typename... Args>
-static constexpr size_t getMinSerializedSize() {
-    if constexpr (sizeof...(Args) == 0) {
-        return 0;// 没有参数时返回0
-    } else {
-        return (getSerializedSize<Args>() + ...);
+template<typename Arg>
+static inline constexpr bool isString() {
+    return fmt::detail::mapped_type_constant<Arg, char>::value == fmt::detail::type::string_type;
+}
+
+template<size_t CstringIdx>
+static inline constexpr size_t getArgSizes(size_t* cstringSize) {
+    return 0;
+}
+
+template<size_t CstringIdx, typename Arg, typename... Args>
+static inline constexpr size_t getArgSizes(size_t* cstringSize, const Arg& arg,
+                                           const Args&... args) {
+    if constexpr (isCstring<Arg>()) {
+        size_t len = strlen(arg) + 1;
+        cstringSize[CstringIdx] = len;
+        return len + getArgSizes<CstringIdx + 1>(cstringSize, args...);
+    }
+    else if constexpr (isString<Arg>()) {
+        size_t len = arg.size() + 1;
+        return len + getArgSizes<CstringIdx>(cstringSize, args...);
+    }
+    else {
+        return sizeof(Arg) + getArgSizes<CstringIdx>(cstringSize, args...);
+    }
+}
+
+template<size_t CstringIdx>
+static inline constexpr char* encodeArgs(size_t* cstringSize, char* out) {
+    return out;
+}
+
+template<size_t CstringIdx, typename Arg, typename... Args>
+static inline constexpr char* encodeArgs(size_t* cstringSize, char* out, Arg&& arg,
+                                         Args&&... args) {
+    if constexpr (isCstring<Arg>()) {
+        memcpy(out, arg, cstringSize[CstringIdx]);
+        return encodeArgs<CstringIdx + 1>(cstringSize, out + cstringSize[CstringIdx],
+                                          std::forward<Args>(args)...);
+    }
+    else if constexpr (isString<Arg>()) {
+        size_t len = arg.size();
+        memcpy(out, arg.data(), len);
+        out[len] = 0;
+        return encodeArgs<CstringIdx>(cstringSize, out + len + 1, std::forward<Args>(args)...);
+    }
+    else {
+        memcpy(out, &arg, sizeof(Arg));
+        return encodeArgs<CstringIdx>(cstringSize, out + sizeof(Arg), std::forward<Args>(args)...);
     }
 }
 
@@ -192,8 +216,14 @@ public:
             return;
         }
 
-        constexpr uint8_t argc = sizeof...(args);
         static thread_local uint32_t tid = OSUtils::getTid();
+        constexpr uint8_t argc = sizeof...(args);
+        constexpr size_t numCstring = fmt::detail::count<isCstring<Args>()...>();
+        size_t cStringSizes[std::max(numCstring, (size_t)1)];
+        // 防止在 leb128 时，编码后的数据长度比原本的还长。所以加上 (argc - numCstring)
+        auto allocSize = getArgSizes<0>(cStringSizes, args...) + (argc - numCstring);
+
+        //printf("allocSize = %u\n", allocSize);
 
         if (formatId == UINT16_MAX) {
             auto formatEntry = std::make_shared<FormatEntry>();
