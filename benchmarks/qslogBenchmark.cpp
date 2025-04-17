@@ -6,6 +6,7 @@
 
 std::shared_ptr<qslog::CompressFileSink> qslogCompressFileSink = nullptr;
 static int initQslogCompressFileSink() {
+    printf("initQslogCompressFileSink\n");
     qslog::Logger::init();
     qslogCompressFileSink = std::make_shared<qslog::CompressFileSink>("file", "compressFileSinkBench.log", true);
     qslog::Logger::addSink(qslogCompressFileSink);
@@ -17,7 +18,7 @@ static void bmQslogCompressFileSink(benchmark::State &state) {
         QSLOGD("compress sink message #{}", ++count);
     }
 }
-BENCHMARK(bmQslogCompressFileSink);
+BENCHMARK(bmQslogCompressFileSink)->ThreadRange(1, 8);
 
 
 BENCHMARK_MAIN();
