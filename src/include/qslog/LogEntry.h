@@ -19,7 +19,7 @@ struct LogEntry {
     uint16_t formatId_ = 0;
     uint64_t time_ = 0;
     uint32_t tid_ = 0;
-    size_t argsSize_ = 0;
+    uint16_t argsSize_ = 0;
     uint8_t *argStore_ = nullptr;
 
     std::string formatLogEntry();

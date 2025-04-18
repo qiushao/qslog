@@ -4,16 +4,14 @@
 #include "qslog/Logger.h"
 #include <benchmark/benchmark.h>
 
-std::shared_ptr<qslog::CompressFileSink> qslogCompressFileSink = nullptr;
-static int initQslogCompressFileSink() {
-    printf("initQslogCompressFileSink\n");
-    qslog::Logger::init();
-    qslogCompressFileSink = std::make_shared<qslog::CompressFileSink>("file", "compressFileSinkBench.log", true);
-    qslog::Logger::addSink(qslogCompressFileSink);
-    return 0;
-}
 static void bmQslogCompressFileSink(benchmark::State &state) {
-    static uint64_t count = initQslogCompressFileSink();
+    static std::once_flag flag;
+    std::call_once(flag, [] {
+        qslog::Logger::init();
+        auto sink = std::make_shared<qslog::CompressFileSink>("file", "qslog-bench.log", true);
+        qslog::Logger::addSink(sink);
+    });
+    static thread_local uint64_t count = 0;
     for (auto _: state) {
         QSLOGD("compress sink message #{}", ++count);
     }

@@ -12,63 +12,6 @@
 
 namespace qslog {
 
-template<typename Arg>
-static inline constexpr bool isCstring() {
-    return fmt::detail::mapped_type_constant<Arg, char>::value == fmt::detail::type::cstring_type;
-}
-
-template<typename Arg>
-static inline constexpr bool isString() {
-    return fmt::detail::mapped_type_constant<Arg, char>::value == fmt::detail::type::string_type;
-}
-
-template<size_t CstringIdx>
-static inline constexpr size_t getArgSizes(size_t* cstringSize) {
-    return 0;
-}
-
-template<size_t CstringIdx, typename Arg, typename... Args>
-static inline constexpr size_t getArgSizes(size_t* cstringSize, const Arg& arg,
-                                           const Args&... args) {
-    if constexpr (isCstring<Arg>()) {
-        size_t len = strlen(arg) + 1;
-        cstringSize[CstringIdx] = len;
-        return len + getArgSizes<CstringIdx + 1>(cstringSize, args...);
-    }
-    else if constexpr (isString<Arg>()) {
-        size_t len = arg.size() + 1;
-        return len + getArgSizes<CstringIdx>(cstringSize, args...);
-    }
-    else {
-        return sizeof(Arg) + getArgSizes<CstringIdx>(cstringSize, args...);
-    }
-}
-
-template<size_t CstringIdx>
-static inline constexpr char* encodeArgs(size_t* cstringSize, char* out) {
-    return out;
-}
-
-template<size_t CstringIdx, typename Arg, typename... Args>
-static inline constexpr char* encodeArgs(size_t* cstringSize, char* out, Arg&& arg,
-                                         Args&&... args) {
-    if constexpr (isCstring<Arg>()) {
-        memcpy(out, arg, cstringSize[CstringIdx]);
-        return encodeArgs<CstringIdx + 1>(cstringSize, out + cstringSize[CstringIdx],
-                                          std::forward<Args>(args)...);
-    }
-    else if constexpr (isString<Arg>()) {
-        size_t len = arg.size();
-        memcpy(out, arg.data(), len);
-        out[len] = 0;
-        return encodeArgs<CstringIdx>(cstringSize, out + len + 1, std::forward<Args>(args)...);
-    }
-    else {
-        memcpy(out, &arg, sizeof(Arg));
-        return encodeArgs<CstringIdx>(cstringSize, out + sizeof(Arg), std::forward<Args>(args)...);
-    }
-}
-
 // 用于static_assert的辅助模板，始终返回false
 template<typename T>
 struct always_false : std::false_type {
@@ -84,6 +27,7 @@ static void serializeArg(LogEntry &entry, T &&arg) {
 
     if constexpr (std::is_same_v<CleanType, bool> || std::is_same_v<CleanType, char> || std::is_same_v<CleanType, uint8_t> || std::is_same_v<CleanType, int8_t> || std::is_floating_point_v<CleanType>) {
         memcpy(entry.argStore_ + entry.argsSize_, &arg, sizeof(arg));
+        entry.argsSize_ += sizeof(arg);
     } else if constexpr (std::is_unsigned_v<CleanType> && std::is_integral_v<CleanType>) {
         // 无符号整型 uint16, 32, 64, 统一按 uint64 位处理
         auto value = static_cast<uint64_t>(arg);
@@ -217,13 +161,8 @@ public:
         }
 
         static thread_local uint32_t tid = OSUtils::getTid();
+        static thread_local uint8_t argsBuffer[4096];
         constexpr uint8_t argc = sizeof...(args);
-        constexpr size_t numCstring = fmt::detail::count<isCstring<Args>()...>();
-        size_t cStringSizes[std::max(numCstring, (size_t)1)];
-        // 防止在 leb128 时，编码后的数据长度比原本的还长。所以加上 (argc - numCstring)
-        auto allocSize = getArgSizes<0>(cStringSizes, args...) + (argc - numCstring);
-
-        //printf("allocSize = %u\n", allocSize);
 
         if (formatId == UINT16_MAX) {
             auto formatEntry = std::make_shared<FormatEntry>();
@@ -233,7 +172,7 @@ public:
             formatEntry->formatStr_ = fmt::format("{} [{}:{} {}] {}", tag, getBaseFilename(file), line, function, format.str.data());
             FormatIdManager::registerFormatId(formatId, formatEntry);
         }
-        static thread_local uint8_t argsBuffer[2048];
+
         LogEntry logEntry{
                 .formatId_ = formatId,
                 .time_ = tscns_.rdns(),

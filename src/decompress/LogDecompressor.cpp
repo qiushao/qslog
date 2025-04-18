@@ -86,7 +86,6 @@ bool LogDecompressor::readFormatEntry(uint8_t header) {
     // 提取日志级别（低6位）
     uint8_t logLevel = header & 0x3F;
     auto formatEntry = std::make_shared<FormatEntry>();
-    formatEntry->entryType_ = EntryType::FORMAT_ENTRY;
     formatEntry->logLevel_ = logLevel;
 
     if (!read(formatEntry->argc_)) {

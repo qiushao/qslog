@@ -89,7 +89,7 @@ bool LogEntry::extractArgs(fmt::dynamic_format_arg_store<fmt::format_context> &a
                 break;
             }
             case ArgTypeId::DOUBLE: {// double
-                double value = *reinterpret_cast<const float *>(&argStore_[pos]);
+                double value = *reinterpret_cast<const double *>(&argStore_[pos]);
                 argStore.push_back(value);
                 pos += sizeof(value);
                 break;

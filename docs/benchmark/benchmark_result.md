@@ -14,21 +14,20 @@ echo schedutil | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
 
 # result
 ```shell
-2025-04-07T18:09:36+08:00
-Running ./qslogBenchmark
-Run on (24 X 3597.28 MHz CPU s)
+Run on (16 X 819.684 MHz CPU s)
 CPU Caches:
-  L1 Data 32 KiB (x12)
-  L1 Instruction 32 KiB (x12)
-  L2 Unified 512 KiB (x12)
-  L3 Unified 16384 KiB (x4)
-Load Average: 0.08, 0.36, 0.50
------------------------------------------------------
-Benchmark           Time             CPU   Iterations
------------------------------------------------------
-bmFileSink       80.4 ns         80.4 ns      9001090
-[ perf record: Woken up 2 times to write data ]
-[ perf record: Captured and wrote 0.312 MB perf.data (3392 samples) ]
+  L1 Data 48 KiB (x8)
+  L1 Instruction 32 KiB (x8)
+  L2 Unified 1280 KiB (x8)
+  L3 Unified 18432 KiB (x1)
+Load Average: 2.49, 1.51, 1.16
+----------------------------------------------------------------------------
+Benchmark                                  Time             CPU   Iterations
+----------------------------------------------------------------------------
+bmQslogCompressFileSink/threads:1       26.9 ns         26.9 ns     26032344
+bmQslogCompressFileSink/threads:2        281 ns          276 ns      2553324
+bmQslogCompressFileSink/threads:4        737 ns          616 ns      1149620
+bmQslogCompressFileSink/threads:8       2242 ns         1886 ns       380032
 ```
 
 
@@ -48,4 +47,5 @@ stackcollapse-perf.pl perf.unfold &> perf.folded
 flamegraph.pl perf.folded > perf.svg
 ```
 
-在 release 模式下运行 benchmark，有时候会出现一些系统调用很占时间，但又没有调用堆栈，这时候可以使用 debug 模式来跑 benchmark， 可以看到完整的调用堆栈。
+使用同步模式日志，在多线程的时候性能有明显下降，看 perf 结果，基本时间都花在锁上了
+但要是使用 fmtlog 那样的异步日志的话又会搞得很复杂，
